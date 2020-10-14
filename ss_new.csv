@@ -1,0 +1,101 @@
+﻿age,marital.status,employment.month,poverty.perception,current.school,program.exposure,educ.outcome
+20,Currently Married,No IGA/Employment Past Month,Moderately poor,Currently in School,1,Positive Outcome
+15,Never Married,No IGA/Employment Past Month,Moderately poor,Not Currently in School,1,No Positive Outcome
+20,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,0,Positive Outcome
+18,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,Positive Outcome
+21,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+20,Never Married,IGA/Employment Past Month,Moderately poor,Not Currently in School,1,No Positive Outcome
+16,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,0,Positive Outcome
+22,Never Married,No IGA/Employment Past Month,Very poor,Not Currently in School,1,No Positive Outcome
+22,Currently Married,No IGA/Employment Past Month,Moderately poor,Currently in School,0,No Positive Outcome
+20,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,1,No Positive Outcome
+22,Divorced/Widowed/Separated,Never Had IGA/Employment,Very poor,Not Currently in School,0,No Positive Outcome
+21,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,0,Positive Outcome
+22,Divorced/Widowed/Separated,Never Had IGA/Employment,Moderately poor,Not Currently in School,0,Positive Outcome
+15,Currently Married,Never Had IGA/Employment,Very poor,Not Currently in School,1,No Positive Outcome
+20,Currently Married,Never Had IGA/Employment,Moderately poor,Currently in School,1,No Positive Outcome
+17,Currently Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+20,Currently Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,0,No Positive Outcome
+17,Never Married,No IGA/Employment Past Month,Moderately poor,Not Currently in School,0,No Positive Outcome
+19,Never Married,No IGA/Employment Past Month,Moderately poor,Currently in School,0,No Positive Outcome
+20,Currently Married,Never Had IGA/Employment,Very poor,Not Currently in School,0,No Positive Outcome
+20,Currently Married,IGA/Employment Past Month,Moderately poor,Currently in School,0,Positive Outcome
+21,Currently Married,No IGA/Employment Past Month,Not poor,Currently in School,1,No Positive Outcome
+18,Cohabiting,Never Had IGA/Employment,Moderately poor,Not Currently in School,0,Positive Outcome
+21,Never Married,Never Had IGA/Employment,Not poor,Currently in School,1,Positive Outcome
+20,Currently Married,Never Had IGA/Employment,Moderately poor,Currently in School,1,No Positive Outcome
+15,Never Married,No IGA/Employment Past Month,Moderately poor,Currently in School,0,No Positive Outcome
+15,Currently Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+21,Currently Married,No IGA/Employment Past Month,Moderately poor,Currently in School,1,Positive Outcome
+19,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,0,No Positive Outcome
+21,Currently Married,No IGA/Employment Past Month,Moderately poor,Currently in School,0,No Positive Outcome
+18,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,1,No Positive Outcome
+16,Never Married,IGA/Employment Past Month,Not poor,Not Currently in School,1,Positive Outcome
+19,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,0,Positive Outcome
+16,Never Married,IGA/Employment Past Month,Moderately poor,Currently in School,1,Positive Outcome
+15,Currently Married,IGA/Employment Past Month,Moderately poor,Not Currently in School,0,No Positive Outcome
+20,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,0,Positive Outcome
+22,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,Positive Outcome
+21,Currently Married,Never Had IGA/Employment,Moderately poor,Currently in School,1,Positive Outcome
+15,Never Married,No IGA/Employment Past Month,Moderately poor,Currently in School,1,No Positive Outcome
+22,Currently Married,IGA/Employment Past Month,Moderately poor,Currently in School,1,Positive Outcome
+18,Currently Married,No IGA/Employment Past Month,Moderately poor,Not Currently in School,0,No Positive Outcome
+22,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,1,No Positive Outcome
+22,Currently Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,0,No Positive Outcome
+22,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,1,Positive Outcome
+16,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+21,Never Married,No IGA/Employment Past Month,Moderately poor,Not Currently in School,0,No Positive Outcome
+20,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+19,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,0,No Positive Outcome
+20,Currently Married,No IGA/Employment Past Month,Moderately poor,Not Currently in School,0,Positive Outcome
+22,Currently Married,Never Had IGA/Employment,Moderately poor,Currently in School,1,No Positive Outcome
+16,Never Married,IGA/Employment Past Month,Moderately poor,Not Currently in School,0,No Positive Outcome
+16,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+18,Never Married,No IGA/Employment Past Month,Moderately poor,Not Currently in School,1,Positive Outcome
+18,Currently Married,No IGA/Employment Past Month,Moderately poor,Currently in School,1,No Positive Outcome
+20,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,0,Positive Outcome
+17,Cohabiting,IGA/Employment Past Month,Moderately poor,Not Currently in School,1,No Positive Outcome
+17,Currently Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,0,No Positive Outcome
+21,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+19,Currently Married,IGA/Employment Past Month,Moderately poor,Currently in School,0,Positive Outcome
+19,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,0,Positive Outcome
+19,Currently Married,IGA/Employment Past Month,Very poor,Not Currently in School,0,Positive Outcome
+21,Never Married,IGA/Employment Past Month,Moderately poor,Not Currently in School,1,No Positive Outcome
+19,Cohabiting,Never Had IGA/Employment,Moderately poor,Not Currently in School,0,No Positive Outcome
+19,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,1,Positive Outcome
+19,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+20,Currently Married,IGA/Employment Past Month,Moderately poor,Currently in School,0,No Positive Outcome
+21,Never Married,IGA/Employment Past Month,Very poor,Not Currently in School,0,No Positive Outcome
+19,Never Married,IGA/Employment Past Month,Moderately poor,Not Currently in School,1,Positive Outcome
+16,Never Married,No IGA/Employment Past Month,Moderately poor,Not Currently in School,1,No Positive Outcome
+17,Currently Married,No IGA/Employment Past Month,Moderately poor,Not Currently in School,0,No Positive Outcome
+20,Never Married,Never Had IGA/Employment,Not poor,Not Currently in School,0,No Positive Outcome
+18,Currently Married,No IGA/Employment Past Month,Moderately poor,Not Currently in School,0,No Positive Outcome
+20,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,0,No Positive Outcome
+20,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,Positive Outcome
+21,Currently Married,Never Had IGA/Employment,Very poor,Not Currently in School,1,No Positive Outcome
+21,Never Married,Never Had IGA/Employment,Very poor,Not Currently in School,1,No Positive Outcome
+21,Currently Married,IGA/Employment Past Month,Not poor,Not Currently in School,1,No Positive Outcome
+21,Currently Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,Positive Outcome
+22,Never Married,No IGA/Employment Past Month,Moderately poor,Currently in School,0,Positive Outcome
+19,Currently Married,No IGA/Employment Past Month,Moderately poor,Not Currently in School,0,Positive Outcome
+19,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+18,Never Married,IGA/Employment Past Month,Moderately poor,Not Currently in School,1,Positive Outcome
+22,Never Married,No IGA/Employment Past Month,Moderately poor,Currently in School,1,Positive Outcome
+20,Currently Married,IGA/Employment Past Month,Moderately poor,Currently in School,0,No Positive Outcome
+19,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+22,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+22,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+21,Never Married,Never Had IGA/Employment,Moderately poor,Currently in School,1,Positive Outcome
+15,Never Married,IGA/Employment Past Month,Very poor,Not Currently in School,0,Positive Outcome
+22,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,0,Positive Outcome
+20,Currently Married,No IGA/Employment Past Month,Moderately poor,Not Currently in School,0,Positive Outcome
+18,Never Married,No IGA/Employment Past Month,Not poor,Not Currently in School,1,No Positive Outcome
+21,Divorced/Widowed/Separated,IGA/Employment Past Month,Not poor,Not Currently in School,0,Positive Outcome
+21,Never Married,Never Had IGA/Employment,Not poor,Not Currently in School,0,Positive Outcome
+18,Currently Married,IGA/Employment Past Month,Very poor,Currently in School,0,No Positive Outcome
+15,Never Married,Never Had IGA/Employment,Not poor,Not Currently in School,1,No Positive Outcome
+22,Never Married,IGA/Employment Past Month,Moderately poor,Not Currently in School,1,No Positive Outcome
+21,Divorced/Widowed/Separated,Never Had IGA/Employment,Moderately poor,Not Currently in School,1,No Positive Outcome
+19,Currently Married,IGA/Employment Past Month,Moderately poor,Not Currently in School,0,No Positive Outcome
+21,Never Married,Never Had IGA/Employment,Moderately poor,Not Currently in School,0,No Positive Outcome
