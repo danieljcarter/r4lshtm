@@ -1,0 +1,328 @@
+
+
+# Tidying Data 
+
+In this session, we will be using a simulated dataset that is based on a real dataset of people living with TB and some of their associated social characteristics. We are going to read in this dataset, then we're going to tidy it up. 9 out of 10 statisticians will agree that data cleaning and tidying is their least favourite part of their job. Nevertheless, effort spent making a tidy dataset (or datasets!) will pay off with substantially less pain at the analysis stage.
+
+What defines tidy data? In general, tidy data is characterised by every row of the data being an observation (potentially a person, potentially a particular _measurement_ taken from a person at some time - consider datasets where multiple observations are made on the same individuals, potentially a geographic area...) and every column is a variable of interest. 
+
+Once we have tidy data, we might want to make that data _clean_. Clean data looks different to everyone, but in general there are a few things to look out for: 
+
+* Every variable's type is correct (numeric (continuous variables), string (text), factor (categorical variables)...)
+* Missing data is correctly recorded
+* Factors have informative labels
+* Small categories are recategorised
+
+## Loading libraries
+
+Recall that we might need some packages and therefore must load their libraries. Remember to install them if you need them. Here are the packages we need for this session. We load the tidyverse last so its functions take precedence any time there is a conflict between the tidyverse and other packages.Your own analysis scripts will often start with a statement to load libraries.
+
+```{r}
+library(foreign)
+library(magrittr)
+library(tidyverse)
+```
+
+
+## Reading in a csv file
+
+To read in a csv, the most common data format, we use the function read_csv().  More on factors later. Let's read in some data now.
+
+This dataset is a simulated dataset based on a real dataset collected as part of the DREAMS study, which investigates a combination HIV prevention intervention in a cohort of adolescent girls and young women. It should be stressed that this is not real data and none of the combinations of data in this dataset actually belong to a real individual.
+
+```{r}
+dreams <- read_csv("E:/LSHTM/Teaching/r4epi/Temp/ss_new")
+```
+
+
+## Reading in a dta file
+
+You might also be provided with data in a .dta format if someone has exported it from Stata for you. There are some slight differences in reading in dta files compared to csv files. Let's read in a dta file now using the readstata13 package.
+
+> Exercise: Install and load the foreign package
+
+```{r}
+
+```
+
+We can read in a dataset from Stata using read.dta(). Where possible, setting convert.factors = T should read in Stata labels for factors.
+
+```{r}
+#--- Read in a Stata file
+bab9 <- read.dta("E:/LSHTM/Teaching/r4epi/TEMP/BAB9.DTA", convert.factors = T)
+```
+
+Simple! Just like reading in a csv file. For Stata 13 files, read.dta13() is useful, and you will need to set the option nonint.factors = T.
+
+Now let's look at tidying some data.
+
+## Getting started with tidying
+
+The objects 'table1' - 'table 4b' in the tidyverse are summaries of some cases of TB for a few countries and their populations. Have a look at each of these tables -- observe how they store the data in different ways.
+
+```{r}
+table1
+table2
+table3
+table4a
+table4b
+```
+
+> Exercise: Which of the tables above is stored as 'tidy data' as it is defined above?
+
+```{r}
+
+```
+
+
+> Exercise: Remind yourself of the mutate() function. Use table1 and mutate() to calculate the incidence rate using the cases and population columns
+
+```{r}
+
+```
+
+
+> Exercise: Remind yourself of how ggplot2() works by creating a plot to show the change in incidence rate over time (hint: use the code you used in the previous exercise, and pipe it into a ggplot() function; use geom_point() and geom_line())
+
+```{r}
+
+```
+
+
+## Gather()
+
+Let's say you are given data in the format as it appears in table4a. We can see that table4a is not tidy data. Why is this the case? In tidy data, every column is a variable and every row is an observation. We can see here that the 'year' variable is spread across two columns. 
+
+We use gather() to say that the two columns 1999 and 2000 should be put into a two new columns: a new key column (called year) and a new value column (called cases). Try this with table 4a now.
+
+```{r}
+#--- Tidying data by going from wide to long
+table4a %>% 
+  gather(`1999`, `2000`, key = "year", value = "cases")
+```
+
+> Exercise: Tidy table4b in the same way, using relevant column names for key and value.
+
+```{r}
+
+```
+
+
+## Spread()
+
+Spreading is the opposite of gathering and you use it when an observation is spread across multiple rows, as is the case in table2. Here the cases and the population are spread across multiple rows. To spread() we need to specify a key column and a value column. The key column provides the new column names and the count column provides the values for this new column. See the code below:
+
+```{r}
+#--- Convert a table from long to wide
+table2 %>% spread(key = type, value = count)
+```
+
+> Exercise: Why does the code below (in comments) fail?
+
+```{r}
+#--- Incorrect code
+# table4a %>% 
+#   gather(1999, 2000, key = "year", value = "cases")
+
+```
+
+
+
+## Missing values
+
+R supports missing values through the NA value. You should always be vigilant about how missing values are coded in your data. NAs in R tend to carry through -- if you have one missing value and try to calculate something, the result will also be missing. You might find that for some functions, R automatically drops the missing values. Always be conscious of your data. 
+
+## Recoding
+
+One important task in R is to be able to relabel and manipulate variables to more easily arise at tidy data. We notice that in the dreams dataset, the program.exposure variable is coded as 0 or 1 - 1 if individuals got the HIV prevention program, and 0 if they did not. While this is useful if we have the data dictionary, what if you might want to use this data again and your session facilitator never got around to uploading one?
+
+We can tell R to treat this numeric data as factor data by using the function as.factor() within a call to mutate(). Note that we assign the result back into the data frame. Note that within the factor() function, we list both the levels (of the old variable) and the labels (of the new variable). We map the levels to the labels.
+
+You might be wondering the function of the c(). This function stands for concatenate and it creates a vector. A vector is a list of objects (these might be numbers, strings of characters, other vectors...) where all the items in the list are the same 'data type' (e.g. numeric, factor, character...). You can see by typing ?factor that the _arguments_ to the factor() function should all be vectors. If this business about data types and vectors is not clear to you at this point, don't worry - this is a higher-level programming concept than you need to actually work in R, but a useful one to know - you'll gain this type of knowledge through repeatedly using R and the help files.
+
+```{r}
+#--- Change the numeric variable into a factor variable
+dreams <- dreams %>% 
+  mutate(program.exposure = factor(program.exposure,
+                                   levels = c(0, 1),
+                                   labels = c("Not Exposed", "Exposed")))
+
+```
+
+Another important function is case_when(). case_when() allows you to explicitly map the levels of one factor to the levels of another factor. It has a fairly complicated syntax, so the best way to learn this function is to see it in action. The idea is that you map one set of variables onto another. We are going to create a new binary variable called ever.married from the marital.status variable.
+
+```{r}
+#--- Get summary stats
+summary(dreams$marital.status)
+
+#--- Convert using case_when
+dreams <- dreams %>% 
+  mutate(ever.married = 
+            as.factor(
+                case_when(marital.status == "Cohabiting" ~ "Never Married",
+                          marital.status == "Never Married" ~ "Never Married",
+                          marital.status == "Divorced/Widowed/Separated" ~ "Ever Married",
+                          marital.status == "Currently Married" ~ "Ever Married")))
+```
+
+Another way to do this is using vectors and %in%.
+
+```{r}
+#--- Create vectors
+nm <- c("Cohabiting", "Never Married")
+em <- c("Divorced/Widowed/Separated", "Currently Married")
+
+dreams <- dreams %>% 
+  mutate(ever.married = 
+           as.factor(
+             case_when(marital.status %in% nm ~ "Never Married",
+                       marital.status %in% em ~ "Ever Married"))
+           )
+```
+
+> Exercise (challenging-ish!): Create a new variable called age group that is a binary variable of 15-17 years and 18-22 years.
+
+```{r}
+
+```
+
+
+## Looking at categorical data
+
+One of the key things that epidemiologists do with categorical data is tabulate it. There are two useful functions in the EpiDisplay package for this purpose (although we could also do this with summarise()!)
+
+The first of these is tabpct(). Let's look at the outcome (here, a positive educational outcome) contrasted with the exposure (to the combination HIV programme). The second is cc(). Compare and contrast what they do.
+
+```{r}
+#--- Load necessary libraries
+library(magrittr)
+library(epiDisplay)
+
+#--- Construct a 2x2 table
+dreams %$% tabpct(program.exposure, educ.outcome, graph = F)
+dreams %$% cc(program.exposure, educ.outcome, graph = F)
+
+#--- Reminder: same code, no pipe
+#tabpct(dreams$program.exposure, dreams$educ.outcome, graph = F)
+```
+
+> Exercise: Cross-tabulate poverty perception with the educational outcome. Do the same for being in school. 
+
+```{r}
+
+```
+
+
+> Challenge Exercise: See if you can figure out where the 'OR' component comes from.
+
+```{r}
+
+```
+
+
+
+## Manipulating Factors
+
+We might want to sometimes change some of our factor variables. There's the handy forcats package in the tidyverse that covers many of those activities.
+
+Let's return to the SDG dataset
+
+> Exercise: Read in the sdg dataset.
+
+```{r}
+
+```
+
+Let's say we want to look at country aggregate GDP using the lmic variable. Count returns a frequency table. We can also visualise with a bar chart.
+
+```{r}
+#--- Get frequency tables and bar chart
+sdg %>% 
+  count(lmic)
+
+ggplot(sdg, aes(lmic)) +
+  geom_bar() +
+  theme_bw()
+```
+
+We can see that the order in which the factors are plotted is not particularly useful to us. Let's change that. Let's get a summary of GDP by lmic. Make sure you understand what n() is doing.
+
+```{r}
+#--- Plot a factor
+gdp_summary <- sdg %>%
+  group_by(lmic) %>%
+  summarise(
+    meangdp = mean(gdp, na.rm = TRUE),
+    n = n()
+  )
+
+ggplot(gdp_summary, aes(meangdp, lmic)) + geom_point() + theme_bw()
+
+```
+
+We might want to re-order this plot to make it more clear.
+
+```{r}
+#--- Reorder a factor
+ggplot(gdp_summary, aes(meangdp, fct_reorder(lmic, meangdp))) +
+  geom_point() + theme_bw()
+```
+
+If I want to put a specific level of the factor at the bottom, I can do that with fct_relevel(). This is useful in regressions (see: modelling_data) to set a 'baseline' group.
+
+```{r}
+#--- Relevel a factor
+ggplot(gdp_summary, aes(meangdp, fct_relevel(lmic, "Lower middle income"))) +
+  geom_point() + theme_bw()
+
+```
+
+Other useful functions are fct_recode(), which is similar to case_when, fct_collapse(), which can collapse a factor with lots of levels into a smaller set of levels, and fct_lump() which can collapse smaller levels into one larger one. See Chapter 15.4 of R for Data Science for more information.
+
+## Summative Exercise
+
+'who' is a TB dataset.
+
+The first three letters of each column denote whether the column contains new or old cases of TB. In this dataset, each column contains new cases.
+
+The next two letters describe the type of TB:
+
+rel stands for cases of relapse
+ep stands for cases of extrapulmonary TB
+sn stands for cases of pulmonary TB that could not be diagnosed by a pulmonary smear (smear negative)
+sp stands for cases of pulmonary TB that could be diagnosed be a pulmonary smear (smear positive)
+The sixth letter gives the sex of TB patients. The dataset groups cases by males (m) and females (f).
+
+The remaining numbers gives the age group. The dataset groups cases into seven age groups:
+
+014 = 0 – 14 years old
+1524 = 15 – 24 years old
+2534 = 25 – 34 years old
+3544 = 35 – 44 years old
+4554 = 45 – 54 years old
+5564 = 55 – 64 years old
+65 = 65 or older
+
+> Summative Exercise Pt 1: The following complex piped code cleans the 'who' dataset. What does each step do?
+
+```{r}
+who
+
+who %>%
+  gather(key, value, new_sp_m014:newrel_f65, na.rm = TRUE) %>% 
+  mutate(key = stringr::str_replace(key, "newrel", "new_rel")) %>%
+  separate(key, c("new", "var", "sexage")) %>% 
+  select(-new, -iso2, -iso3) %>% 
+  separate(sexage, c("sex", "age"), sep = 1)
+```
+
+> Summative Exercise Pt 2: For each country, year, and sex, compute the total number of cases of TB. Make an informative visualisation of this data.
+
+```{r}
+
+```
+
+
+
+
+

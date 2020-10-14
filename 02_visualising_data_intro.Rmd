@@ -1,0 +1,212 @@
+
+# Visualising Data
+
+This section will take you through some basic data visualisation in R using the ggplot2 package.
+
+You should have at this point already made sure you've set up R according to the Getting Started guide and have already run your first commands in R.
+
+## Setup & Reading in Data
+
+We are going to examine a number of different questions surrounding the Sustainable Development Goals in this session.
+
+The first thing we are going to do is make sure we have the packages we need installed and the libraries loaded. So we set up a chunk of code to ensure the tidyverse is loaded. The tidyverse is a suite of packages specifically designed to make data cleaning and analysis simpler and more straightforward. 
+
+There is an ongoing 'debate' between whether one should use the tidyverse for data analysis or stick with the functions that come natively with R. I have written these notes using the tidyverse suite as I am generally in favor of not doing excess work if someone has done that work previously! Packages greatly extend the functionality of R, though the downfall is that sometimes they change (and your old code may have to be updated - though this is a rare occurrence!). I also find the tidyverse simpler for pedagogical purposes so you can think about the analysis, not about the specifics of how R works. As you become a more advanced user, you will need to understand more about Base R - and then you'll come to your own conclusion!
+
+```{r}
+#--- Load libraries
+library(tidyverse)
+```
+
+To start investigating our question, we need a dataset. Most data comes to you in a csv (comma separated values) file from Excel - we will talk about other formats later. This dataset, sdg.csv, should've come with the downloaded zip file - make sure that it is located in the same folder as this R file, else the code will not work.
+
+We use a simple function to read in data: read_csv().  
+
+
+```{r}
+#--- Read in the data
+sdg <- read_csv("./sdg.csv")
+
+#--- This will only work on my computer
+sdg <- read_csv("E:/LSHTM/Teaching/r4epi/sdg.csv")
+
+#--- Get working directory
+getwd()
+```
+
+Let's unpack a couple of things from this code. A key idea in R is that objects (like a dataset) are assigned to particular names. We read in the data and assigned it the name 'sdg' because it is a collection of data on a variety of Sustainable Development Goal subtargets. We did the assignment using the '<-' arrow. The function read_csv() took one argument, where we told R which file to read in. 
+
+Note that we did not specify the full path to the data. We use the "." to tell R to look in the same directory where the R file you are working in is saved. We can view what directory this is with getwd() -- wd stands for "working directory". In general, you should never have to change the working directory explicitly - just make sure you save your data in the same place as your analysis file.
+
+When you read in the data, you should've seen a new object in the top right Environment pane. 
+
+> EXERCISE: How many rows does the dataset have? What does each row represent? How many columns does the dataset have? What does each column represent?
+
+## Initial Investigations
+
+We might want to look at this data. We can do that by clicking on the name of the dataset in the environment pane, or with the following code:
+
+```{r}
+#--- Look at the dataset (note the capitalisation, R is case sensitive!)
+View(sdg)
+
+#--- We can also just look at the first few rows (useful for large datasets)
+head(sdg)
+
+#--- We can also just get the column names
+names(sdg)
+
+```
+
+Note the well-commented code telling you what each snippet does! It is generally a good idea when writing your own code to comment as you go so future you doesn't forget the purpose of each line of code.
+
+Let's look at some TB-specific data. The column 'tb' contains information about the TB incidence rate expressed as the number of cases per 100,000 people.
+
+```{r}
+#--- Look at the TB values for the first few observations
+head(sdg$tb)
+
+#--- Get some summary statistics for the values of TB incidence
+summary(sdg$tb)
+```
+
+Note that here we use a dollar sign to "index" the 'tb' column. Typing "sdg$tb" says that we are interested in the column tb in the dataset sdg. 
+
+> EXERCISE: Using only code you have already seen, what is the mean GDP for all nations? How many nations have missing GDP data? 
+
+```{r}
+
+```
+
+
+We can get some more detailed summary information using the psych package. 
+
+> EXERCISE: Install the psych package and load its library
+
+```{r}
+
+```
+
+
+```{r}
+#--- Get a detailed summary
+describe(sdg$tb)
+
+#--- Get a summary by LMIC designation from the World Bank
+describeBy(sdg$tb, sdg$lmic)
+```
+
+> EXERCISE: Get detailed summary statistics for maternal mortality, both alone and stratified by LMIC status.
+
+## A Pipe Aside
+
+If you were typing out this code, you'd be very tired of typing the dataset name by now. Enter the %$% pipe from the magrittr package. Remember how we said we access columns from a dataset using the dollar sign? This pipe puts whatever is on the left of the pipe in front of whatever is on the right of the pipe, with a dollar sign in between. It is called a pipe because it offers a passage from the left of the pipe to the right. Think Super Mario Bros.
+
+```{r, echo = F, warnings = F}
+#--- Load the magrittr library - remember to install it first if you need to
+library(magrittr)
+```
+
+Convince yourself that the pipe does this with the below code. You don't have to use this pipe, but it can make using tidyverse functions and base R together much easier, and gives you a convenient syntax for always starting with the dataset as the leftmost argument.
+
+If you want to know more about the describe function, you can get help by typing ?describe into the Console. This is true for any function in R.
+
+```{r}
+#--- Get a detailed summary
+describe(sdg$tb)
+
+#--- Same thing, but with a pipe
+sdg %$% describe(tb)
+
+#--- Get the correlation between TB and Gini coefficient
+## Note that the 'use' argument says to only use data where both observations are not missing
+cor(sdg$tb, sdg$gini, use = "complete.obs")
+
+## This correlation says that TB & Gini are slightly positively associated.
+## As income inequality goes up, so does TB (this shouldn't be surprising!)
+
+#--- The same code with a pipe
+sdg %$% cor(tb, gini, use = "complete.obs")
+
+```
+
+This may seem like a minor difference, but an important part of coding is legibility - by always ensuring the data is on the left, you can help someeone unfamiliar with your code to figure out what each component does. We'll see more about pipes later.
+
+## Starting to Plot
+
+Let's explore further the relationship between the Gini index and TB incidence, visually this time. Here we are going to introduce the ggplot2() package within the tidyverse. 
+
+In R, we will often build our analyses step by step, appending small chunks of code together to complete larger tasks. It is the same concept with visualisation. Consider this like painting: we combine elements like line and shape and color together into a cohesive whole. 
+
+Let's start with a very basic plot:
+
+```{r}
+#--- Our first scatterplot
+ggplot(data = sdg, aes(x = gini, y = tb)) +
+  geom_point()
+```
+
+Let's unpack the code here. The ggplot() function is the one that builds the plot. We tell it that we want to use the sdg dataset we loaded in by 'data = sdg'. We also need to tell ggplot how to map the various attributes of the plot to the various attributes of the data. We do that mapping with the aes() command, standing for aesthetics. We tell ggplot() that on our x axis we want the Gini coefficient and on the Y axis we want TB incidence. Note the handy warning that we've got missing data that hasn't been plotted!
+
+Now we have to tell ggplot what type of graph we want -- we do this with geom_point(), which tells ggplot to produce a scatterplot (by suggesting that we plot points). 
+
+## A bit more detail...
+
+We might want to make our graph a bit prettier and convey some more information, so we add a new mapping: we tell ggplot to color the points by the WHO region of interest. Note that this goes in the aes() brackets because it has to do with how the look of the graph maps to a column of data. To make our points clearer, we change the 'theme' of our plot using theme_bw() -- there are several default plot themes inbuilt into R and this one removes the default grey background.
+
+```{r}
+#--- Colour the points and remove the background grey
+ggplot(data = sdg, aes(x = gini, y = tb, color = reg)) +
+  geom_point() +
+  theme_bw()
+```
+
+
+
+## ...Much more detail
+
+What if we wanted to convey even more information from this plot? Let's add the population of each country as a size element. We'll also give our plot a title and change the labels. 
+
+```{r}
+#--- Add titles and add size aesthetic
+ggplot(data = sdg, aes(x = gini, y = tb, color = reg, size = pop)) +
+  geom_point() +
+  theme_bw() +
+  labs(title = "Income Inequality vs TB Incidence",
+       x = "Gini Coefficient",
+       y = "TB Incidence (cases per 100,000)",
+       color = "WHO Region",
+       size = "Population")
+```
+
+Below are some plotting exercises. You may wish to attempt these now and see where you get to, and return to them after you have gained some confidence in R. Remember that it is completely OK to Google or use StackExchange - part of R is figuring out what to search for to get an answer! 
+
+Even with just a few hours in R, look at what kinds of nice-looking plots you've been able to create! 
+
+> EXERCISE: Create a similar plot to the above, but looking at the relationship between TB (y axis) and the proportion who live in slums (x axis) (Hint: get the names of variables with names(sdg)). Use the World Bank LMIC category as the color and the TB case detection rate as the size.
+
+```{r}
+
+```
+
+
+> EXERCISE: Modify the same plot to show categorised GDP with a shape parameter instead of a color parameter. Label the plot.
+
+```{r}
+
+```
+
+
+> CHALLENGE EXERCISE: Add a smoothed line to the plot to display the relationship between TB and the proportion who live in slums. (HINT: How did you add points...?)
+
+```{r}
+
+```
+
+
+> CHALLENGE EXERCISE: Use geom_label and ggrepel to produce a similar plot that uses the country names instead of the points. (HINT: You might need another package for this...)
+
+```{r}
+
+```
+

@@ -1,0 +1,100 @@
+---
+title: "Session 1 - Getting Started"
+output:
+  word_document: default
+  pdf_document: default
+  html_notebook: default
+---
+
+## Installing R
+
+R is an open-source (i.e. free) alternative to Stata, rapidly growing in popularity. Normally, R is used in conjunction with RStudio, an Integrated Development Environment (IDE) that streamlines the effective use of the software. We are going to install both of these programs now.
+
+R has a steeper learning curve than Stata, but the initial difficulty in learning R is offset by the greater degree of flexibility and capability achievable with the language with more advanced use (i.e. this guide was written and is maintained entirely through R!). Note also that R is in growing demand in both academia and 'industry' and will be a highly useful skill for your arsenal. 
+
+The first thing you will need to do is install R from https://cran.r-project.org/ . Under 'Download and Install R', select your operating system (e.g. Mac/Windows) and then select 'base'. This should give you an .exe file to run. 
+
+Once you have installed R on your computer, you will want to then download RStudio Desktop from https://www.rstudio.com/products/rstudio/download .
+
+If this is your initial time setting up RStudio, I strongly suggest navigating to Tools in the upper toolbar then Modify Keyboard Shortcuts. Find 'Insert new chunk', click anywhere in the line, and hold Ctrl-Shift-I - we do this overwriting of the command as the standard keyboard shortcut fails on most UK computers (why? I do not know!). You may also wish to go into Tools, then Global Options, then Appearance to find an R theme that works for you.
+
+---
+
+## Notebooks & Code Chunks
+
+The top left of the four panes is the Notebook. The majority of your coding will be done here. An R notebook is a document that mixes both text and code, with the code written in 'chunks'. Chunks are a useful way to conceptualise your code - you write one chunk that accomplishes one subtask. You can run an entire chunk by clicking the green triangle in the top right corner. Alternatively, you can run any line within a chunk by placing your cursor anywhere within the line and pressing Ctrl-Enter. Note the difference from Stata here - students often highlight the whole line but this is inefficient in R! Also note that you can have multiple notebooks open at once. You can insert a chunk using the modified Ctrl-Shift-I shortcut.
+
+Below the Notebook pane is the Console. When you run code, its output will appear in the console. You can also code directly in the Console. A useful R workflow is to test your short lines of code directly in the console, and only put code you know works into the R Notebook chunks. It is also useful for doing quick calculations. The > symbol with a blinking cursor indicates the console is ready to receive code. While code runs, the > symbol will disappear, returning when the code is run.
+
+> EXERCISE: Run the first chunk of code in the getting_started Notebook (below). Where does the output appear? 
+
+```{r}
+2+2
+```
+
+
+> EXERCISE: Calculate 347 divided by 3 in the Console (bottom left) pane. What has R done in the display?
+
+> EXERCISE: Insert a chunk that performs the same calculation below this text.
+
+> CHALLENGE EXERCISE: Compute the exact area of a circle with radius 9 in the above chunk.
+
+The top right pane contains the Environment pane. In R, like other programming languages, we can assign values to objects. For example, we might want to assign the value of 4 to the letter x. In R we do this with the assignment operator <- . This arrow says take the value on the right, and assign it to the object on the left. In the chunk below, there are several comments, which are annotations to code. They start with a 'hashtag' and anything after that is known to R to be an annotation instead of a piece of code until the next line.
+
+> EXERCISE: Run the first line of the chunk below. What changes? Now run the second line. Where does the output appear? 
+
+```{r}
+#--- Assign the value 4 to the object x
+x <- 4 #--- First line
+x #--- Second line
+```
+
+
+> EXERCISE: Add a line to the chunk of code above that assigns the value of 1899 (when LSHTM was founded) to a new object 'year'. Use R and this new object to calculate how many years it has been since LSHTM was founded. 
+
+In the exercise above, you are asked to assign a 'value' to an 'object'. An 'object' is a data structure that R recognises, the technical details of which are beyond us at the moment, but we may return to this idea. 
+
+The bottom right pane contains a number of tabs. We can see the structure of the current working directory under Files, we can see any plots we have generated in Plots, any packages we have installed (more on this shortly) in Packages, and any Help files we might want.
+
+---
+
+## Packages
+
+Essential for interacting with R, packages are a collection of user-made functions to carry out particular tasks. A function can be as simple as returning a mean of some data, or as complex as processing data and running a statistical algorithm. The key intuition is that functions are collections of code that can execute a particular task. Functions normally take one or more objects as inputs and provide one or more objects as outputs. The collection of functions included in R before loading any packages is called 'Base R'.
+
+To load the functions in a given package, we first have to install the package. We do this using the install.packages() function. Run the line of code that installs the tidyverse package below by removing the # at the start of the second line to 'uncomment' the code. R will install the package to a default directory on your computer. If any dialogue box prompts you to 'set up a personal library instead', click yes. You'll hear a bit more about functions in the session.
+
+Much like the way a sentence is structured, functions act like verbs in R. They are 'doing words' that tell R what it is that you'd like to do to a given object. Objects function like nouns and things are done to them. Note that sometimes functions take extra arguments that describe how to apply the function, like adverbs or adjectives. 
+
+> EXERCISE: In the code below, identify the function (verb), the object (noun), and the argument (adjective). 
+
+```{r}
+#--- Install the package
+# install.packages("tidyverse", dependencies = T)
+```
+
+Once we have the package installed, we must load the functions from this library so we can use them within R. Packages once installed will sit on your computer so you only ever need to install them on the same machine once. It would be a lot of work for R to include every function from every package, so once per session you will need to load the libraries to tell R which functions you need. Load the library with the below code. Remember to uncomment by deleting the # symbol from the second line.
+
+```{r, echo = F}
+#--- Load library
+ library(tidyverse)
+```
+
+The tidyverse contains a number of highly useful functions for visualising, summarising, tidying, and modelling data - the four things we will be doing over the course of this practical intro. We also need some data to get going with so let's install the gapminder package which comes with some built in data:
+
+> EXERCISE: Install the 'gapminder' package and load its library.
+
+```{r, include = F, echo=FALSE}
+library(gapminder)
+```
+
+Once you have installed both the tidyverse and gapminder packages and loaded their libraries, run the following line of code to find out what the average life expectancy in Europe in 2007 was. Take a second to hypothesise intuitively what each line of this code is doing - we will explore these functions in due course.
+
+
+```{r, results = F}
+#--- Find out the average life expectancy in 2007 by continent
+gapminder %>% 
+  filter(year == 2007) %>% 
+  group_by(continent) %>% 
+  summarise(mean = mean(lifeExp))
+```
