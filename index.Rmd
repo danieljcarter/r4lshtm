@@ -1,0 +1,44 @@
+---
+title: "R for Statistics in EPH"
+author: "Daniel J Carter"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+output: 
+  bookdown::gitbook:
+    css: style.css
+    split_by: section
+    config:
+      toc:
+        collapse: section
+        before: |
+          <li><a href="./">R for STEPH</a></li>
+    toolbar: 
+      position: static
+documentclass: book
+delete_merged_file: true
+# bibliography: [r4steph.bib]
+# biblio-style: apalike
+# link-citations: yes
+---
+
+# Preface {-}
+
+Welcome to R for LSHTM. This 'book' offers the chance to supplement your learning in Stata by conducting the computer practical sessions in R. By the end of this book, you will have enough proficiency in R to carry out any of the analyses that you will encounter on the standard stats sequence (and hopefully in time, more!)
+
+This book is a combination of efforts. It began with the production of practicals in R for STEPH and Social Epi by Daniel, and has since been expanded by the Herculean efforts of a dedicated group of MSc Epi 2019-20 students, Andrea Mazzella, Lakmal Mudalige, and Julian Matthewman. It now covers SME and ASME as well, with plans to also cover ASM (Advanced Statistical Modelling) in the future.
+
+Any questions about the content in this book can be directed to Daniel Carter [via email](daniel.carter1@lshtm.ac.uk) or [via Twitter](https://twitter.com/methodsmandan) if you're into that sort of thing. The book is constantly a work in progress - please do let me (Daniel) know if there is anything unclear in the explanations or where we could best expand our efforts.
+
+A current wishlist is:
+
+- Expanding the content to include causal modelling (such as in ASM)
+- Including some more material on the wider R universe (e.g. RShiny, git integration, Markdown)
+- Material on nice printing of tables & other Stata-like output
+
+Much of the intro material for this book is based off of [Hadley Wickham's R for Data Science](r4ds.had.co.nz). There is also the invaluable resource that is [Stack Exchange](https://stackexchange.com/). Chances are high that if you're running into an error or are otherwise unsure how to do something in R, someone else in the R community has encountered it before and posted about it on Stack Exchange.
+
+A pedagogical note: There is no rush to get through these notes! Move through them at your own pace. If you are struggling with a particular exercise, re-read the notes above the exercise as it should point you towards the solution. Recall that your colleagues are also a useful source of knowledge - take the time to share with each other what it is you are having difficulty with! Part of learning how to code effectively is to struggle with the code, and raising in yourself questions about why your code isn't working (or what it is that you don't understand, or what you want to know more about it). You are ultimately in charge of your own learning, so it will not benefit you to speed through the exercises. 
+
+I hope you enjoy this sequence of courses - being a better coder often makes one a better epidemiologist or public health practicioner, and I hope they provide a rich addition to your learning.
+
+Happy coding :)
