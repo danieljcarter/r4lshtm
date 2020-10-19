@@ -1,0 +1,307 @@
+
+
+# Summarising Data
+
+Summarising data with R and the tidyverse is generally straightforward. A complex data summary can be reduced to a series of smaller tasks - this is thinking like a programmer!
+
+As we've seen, programming languages bear some resemblance to human languages, in that we can construct sentences using verbs and nouns. The nouns are the objects in our environment, and the verbs are the functions we apply to those objects. 
+
+Let's look at the tidyverse family of functions by examining a few key verbs for data manipulation: arrange(), filter(), select(), group_by(), mutate(), and summarise().
+
+## Pipes
+
+We have already seen one type of pipe, now it is time to introduce the most useful of the pipes, %>%. This pipe takes what is on the left of the pipe and puts it into the first argument of what is on the right. Keep referring to this definition as you work through this code - it should become clear intuitively what the pipe is doing. Ctrl-shift-M is a useful shortcut for inserting a pipe.
+
+## Arrange
+
+Let's start with arrange(). Arrange simply arranges the data in a particular order. Let's order the SDG data by Gini coefficient. Note that the data is by default arranged from lowest to highest. We can alter this by specifying desc(), which will put the data in descending order.
+
+We've used two pipes here -- first we took the sdg dataset and piped it into the arrange function (and thus sorting the dataset by Gini coefficient). We then took that sorted dataset and piped it into head() to view the first six rows. In this way, chaining pipes is like building up a sentence. We would have to use a number of nested brackets to do this otherwise, which is much harder to follow.
+
+```{r}
+#--- Arrange by Gini
+## English: first take the SDG dataset, then arrange it by Gini, then show the first 6 rows
+sdg %>% arrange(gini) %>% head()
+
+#--- Same code, no pipe
+head(arrange(sdg, gini))
+
+#--- Arrange by descending Gini
+sdg %>% arrange(desc(gini)) %>% head()
+```
+
+> EXERCISE: Using arrange, which country has the highest GDP? Which has the lowest TB cure rate? How else might you get this information using what we've seen before?
+
+```{r}
+
+```
+
+
+## Select
+
+Select allows you to pick which variables you'd like to look at. 
+
+Here are some 'use cases' for select(). Check you understand what is happening in each line. I append head() to keep the output short - feel free to delete it.
+
+```{r}
+#--- View the names of the columns of the sdg dataset
+names(sdg)
+
+#--- Select only the TB column
+sdg %>% select(tb) %>% head()
+
+#--- Select every column between TB and TB Case Detection Rate
+sdg %>% select(tb:case.d) %>% head()
+
+#--- Select all the TB related columns and the country column
+sdg %>% select(country, tb, tb.cure, case.d) %>% head()
+
+#--- Select all the columns that are numeric
+sdg %>% select_if(is.numeric) %>% head()
+
+```
+
+With many tidyverse functions, small variants are in place to handle specific tasks. We see this in action with select_if(), the purpose of which is intuitive: select the column that meets a particular criterion.
+
+> EXERCISE: Extract all columns that have to do with population and save them as a data frame called 'pop'
+
+```{r}
+
+```
+
+
+> EXERCISE: Extract all columns that start with the letter 'u' (hint: ?select).
+
+```{r}
+
+```
+
+
+> EXERCISE: Drop the lmic column (Hint: yes, this can be done with select!).
+
+```{r}
+
+```
+
+
+> CHALLENGE EXERCISE: Move the gdp column to the front of the data frame, move the tb column to the back, and drop the urb, urb.pov, and urban.pov.hc variables (Hint: yes, this can also be done with select!).
+
+```{r}
+
+```
+
+
+## Filter
+
+Let's now examine filter(). Filter is select but for rows. What if we wanted to look at only some subsection of the data? The below code looks at some use cases for filter(). 
+
+```{r}
+#--- Filter the dataset to show only those countries with population below 1000000
+sdg %>% select(country, pop) %>% filter(pop < 1000000) %>% head()
+
+#--- Filter to only African nations
+sdg %>% select(country, reg) %>% filter(reg == "AFR") %>% head()
+
+#--- Filter to African nations with population below 1000000
+sdg %>% select(country, pop, reg) %>% filter(reg == "AFR" & pop < 1000000) %>% head()
+
+#--- Filter to African nations OR nations with population below 1000000
+sdg %>% select(country, pop, reg) %>% filter(reg == "AFR" | pop < 1000000) %>% head()
+
+#--- Filter to only nations with no missing data on slum prevalence
+sdg %>% select(country, slums) %>% filter(!is.na(slums)) %>% head()
+```
+
+A few notes on filtering. You'll notice that for setting the filtering condition, we use two equals signs (==). This is because R will interpret a single equals sign as equivalent to the 'assignment operator' <-, which we definitely don't want! Note also that we had to enclose AFR in quotation marks. This is because AFR is stored as a character "string" - in other words, R views AFR as letters, not numbers, and not the name of the variable (which we can access without quotations).
+
+You'll note that & means 'and', | means 'or', and ! means 'not'. Through combinations of these so-called logical operators, you can filter data in a number of ways.
+
+What if I want to save the output of a call to filter() as a new data frame for analysis? Simple. I just assign the entire chain of code to a new object. 
+
+In sentences, the below code says 'I am going to filter the data frame 'sdg' to only African countries, and then I will call the new data frame that contains only those countries 'afr'' 
+
+```{r}
+#--- Filter to only African nations
+afr <- sdg %>% filter(reg == "AFR")
+```
+
+> EXERCISE: Using filter and assignment, how many nations are there represented in the Eastern Mediterranean Region? How else can you get this information?
+
+```{r}
+
+```
+
+
+
+## Mutate & Group By
+
+We are going to introduce two new functions at once now.
+
+mutate() is a function you will use a lot. It is used any time you wish to create a new variable. It comes in two main flavours: mutate() and transmute(). mutate() creates a new variable and preserves the existing one, while transmute() replaces the variable. mutate() returns the complete dataset, while transmute() returns only the variable that you transmuted (so you can think of it as mutate() + select()...).
+
+Often we wish to conduct a particular action only split by some group in the data. Grouping doesn't change the look of the data, but changes how other functions work on the data.
+
+### Mutate
+
+Let's say we wish to look at gdp on a logarithmic scale. This is easily doable with mutate. Note the slightly different syntax, where you have to express the name of the new variable and assign using a single '=' instead of the assignment operator (<-). Important to be clear on how ==, =, and <- are used. 
+
+```{r}
+sdg %>% mutate(log.gdp = log(gdp)) %>% select(country, gdp, log.gdp) %>% head()
+```
+
+So we don't have to scroll all the way through the dataset to see these values, we combine mutate() and select() to extract the changed columns.
+
+```{r}
+sdg %>% mutate(log.gdp = log(gdp)) %>% 
+  select(country, gdp, log.gdp) %>% head()
+```
+
+Sometimes we might wish to do more complex transformations. What if we wanted to look at the difference in GDP from the mean?
+
+We add na.rm to the mean() function to tell R it should ignore missing values.
+
+```{r}
+sdg %>% mutate(diff.gdp = gdp - mean(gdp, na.rm = T)) %>% 
+  select(country, gdp, diff.gdp) %>% head()
+```
+
+To make a fairer comparison, we might want to look within each WHO region to determine how far each GDP is from its _regional_ mean. We do this by adding a group_by() statement.
+
+```{r}
+sdg %>% group_by(reg) %>% 
+  mutate(diff.gdp = gdp - mean(gdp, na.rm = T)) %>% 
+  select(country, gdp, diff.gdp) %>% head()
+```
+
+The possibilities of mutate() are pretty endless. Here are a few use cases. We will look at recoding data with mutate() in the Tidying Data section.
+
+```{r}
+#--- Get the percentile rank of GDP
+## The percentile rank is the percentage of values that are equal to or lower than the value in question
+## E.g. we might expect a percentile rank of about .65 for a blood pressure of 120/80
+sdg %>% arrange(gdp) %>% 
+  mutate(perc = percent_rank(gdp)) %>% 
+  select(country, gdp, perc) %>% 
+  head()
+
+#--- Divide TB incidence into quintiles
+sdg %>% mutate(tb.quint = ntile(tb, 5)) %>% 
+  select(country, tb, tb.quint) %>% 
+  arrange(tb.quint) %>% 
+  head()
+
+#--- Create a z score for proportion living in slums by region
+# A z-score shows where the country sits on a bell curve of all recorded slum values
+# The mean is at 0 and the standard deviation is 1 - more about this on STEPH!
+sdg %>% group_by(reg) %>%  
+  filter(!is.na(slums)) %>% 
+  mutate(z.slums = (slums - mean(slums))/sd(slums)) %>% 
+  select(country:reg, slums, z.slums) %>% 
+  arrange(reg, desc(z.slums)) %>% 
+  head()
+
+#--- Convert all numeric variables to factor variables
+sdg %>% mutate_if(is.numeric, as.factor) %>% head()
+```
+
+> EXERCISE: Create a new column where you replace each country's proportion living in slums variable with the mean proportion living in slums of its region
+
+```{r}
+
+```
+
+
+> EXERCISE: Get the cumulative mean incidence of TB as you go from low GDP to high GDP. (hint: filter, arrange, mutate)
+
+```{r}
+
+```
+
+
+> CHALLENGE EXERCISE: Plot the cumulative mean incidence of TB as you go from low to high GDP (hint: ?reorder)
+
+```{r}
+
+```
+
+
+
+## Summarise
+
+We may wish to generate summary statistics for a particular variable ourselves, rather than using summary. This is a job for summarise(). Let's investigate some summary statistics for TB cure rate.
+
+Here we introduce another way to say !is.na() using complete.cases(). There is often more than one way to do something in R, as you've seen - this allows for soe creativity in coding!
+
+```{r}
+#--- Get summary statistics for TB cure rate
+sdg %>% filter(complete.cases(tb.cure)) %>% 
+  summarise(mean = mean(tb.cure),
+                  median = median(tb.cure),
+                  sd = sd(tb.cure),
+                  min = min(tb.cure),
+                  max = max(tb.cure))
+
+#--- Get same summary statistics grouped by region
+sdg %>% filter(complete.cases(tb.cure)) %>% 
+  group_by(reg) %>% 
+  summarise(mean = mean(tb.cure),
+                  median = median(tb.cure),
+                  sd = sd(tb.cure),
+                  min = min(tb.cure),
+                  max = max(tb.cure))
+```
+
+> EXERCISE: Variance is equal to the square of the standard deviation. Get the variance of maternal mortality by region.
+
+```{r}
+
+```
+
+
+> EXERCISE: By World Bank GDP descriptor (lmic), calculate the mean proportion of individuals living _without_ adequate sanitation.
+
+```{r}
+
+```
+
+
+With just a handful of verbs from the tidyverse, we have seen how to perform a number of different data manipulations that can inform us about our data.
+
+## Integrating Summarising and Visualising
+
+We can use the data we have summarised directly in a call to ggplot() to graph our newly summarised data. We are going to construct a concentration curve using some summarised data.
+
+Each of the steps is outlined as followed:
+
+1. We select only the columns we need: GDP and TB (and country for info)
+2. We drop any variables that are missing either of these values
+3. We use mutate to generate a new variable representing the cumulative amount of GDP, that is, if we lined all the countries up from lowest GDP to highest GDP, this tells us what proportion of GDP we have accounted for as we move along.
+4. We use mutate to generate a new variable representing the cumulative amount of TB incidence.
+5. We plot that data, with cumulative GDP on the x axis and cumulative TB on the y axis.
+6. We add points to each country.
+7. We connect those points with a line.
+8. We add a diagonal line down the middle.
+9. We add a vertical line crossing the x axis at the value .10
+10. We add labels
+11. We remove the grey background.
+
+Make sure you understand what each line is doing and what each element does! Play around with this code if something doesn't make sense - remove one line at a time and see what happens.
+
+```{r}
+#--- Plot a concentration curve
+sdg %>% select(country, gdp, tb) %>% 
+  drop_na() %>% 
+  mutate(cumul.gdp = cumsum(gdp)/sum(gdp)) %>% 
+  mutate(cumul.tb = cumsum(tb)/sum(tb)) %>% 
+  ggplot(aes(x = cumul.gdp, y = cumul.tb)) +
+  geom_point(color = "red") +
+  geom_line() +
+  geom_abline(color = "forestgreen") +
+  geom_vline(xintercept = .10, color = "blue") + 
+  labs(title = "Concentration Curve: TB vs GDP",
+       x = "Cumulative % of GDP",
+       y = "Cumulative % of TB") +
+  theme_bw()
+```
+
+Voila - a beautiful plot! It is clear that countries that make up a small cumulative percentage of GDP account for a large cumulative percentage of TB cases. We can clearly see from our vertial line that the countries making up the lowest 10% of GDP account for about 50% of all total TB cases.
