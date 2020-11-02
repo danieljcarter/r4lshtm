@@ -1,0 +1,175 @@
+
+# Linear Regression: Practical 16
+
+In this practical we continue to examine birthweight as an outcome in the BAB dataset, this time treating birthweight as a quantitative (continuous) variable. 
+
+As always, we load libraries, set options, and read in the data.
+
+```{r, results = FALSE, warning = FALSE, message = FALSE}
+#--- Load libraries
+library(epiDisplay)
+library(foreign)
+library(psych)
+library(magrittr)
+library(tidyverse)
+
+#--- Change to show no scientific notation & round to 3 decimal places
+options(scipen = 10, digits=3) 
+
+#--- Set the plot theme to come out in black and white
+theme_set(theme_bw())
+
+#--- Read in the file
+bab9 <- read.dta("./BAB9.dta", convert.factors = T) 
+```
+
+## Visualising birthweight
+
+Recalling practical 9, we can get a histogram and a summary table of the birthweight variable.
+
+```{r}
+#--- Get summary statistics
+describe(bab9$bweight)
+
+#--- Plot birthweight
+bab9 %>% ggplot(aes(x = bweight)) + geom_histogram()
+```
+
+We wish to see how the mean birthweight changes with gestational age, measured on a continuous scale (gestwks). For a preliminary analysis you could categorise the values of the explanatory variable (gestational age) and use the methods previously learnt for comparing two (or more) means. However, this is not the only way to analyse two continuous variables (nor is it the best).
+
+We start by examining the correlation between birthweight and gestational age visually with a scatter plot.
+
+Unpacking this code, we pipe the dataset into ggplot() and specify the aes(thetics) statement, placing gestational weeks on the x axis and birthweight on the y axis. This time we use the extra argument of geom_point() to specify that e want a scatter plot. The exposure (explanatory; independent) variable goes on the x axis, and the outcome (response; dependent) variable on the y.
+
+```{r}
+bab9 %>% ggplot(aes(x = gestwks, y = bweight)) + geom_point()
+```
+
+
+> Exercise 16.1: Do you think that a straight line through the points adequately captures the relationship between these two variables?
+
+## Extending the visualisation with ggplot2 
+
+We can extend the graphing functionality in R quite easily within the ggplot framework. Let's say we want to add more information to this plot. We add a shape to represent gender, and change the color to represent presence of hypertension. We scale the size of the point by maternal age. We also add a straight line through the data, a title, and labels. The code to do this is presented step by step in comments. Uncomment each line to see how each component changes the graph. Uncomment a chunk of code by highlighting it and pressing Ctrl-Shift-C
+
+```{r}
+#--- Add shape
+# bab9 %>% ggplot(aes(x = gestwks, y = bweight)) + 
+#   geom_point(aes(shape = sex)) 
+
+#--- Add colour
+# bab9 %>% ggplot(aes(x = gestwks, y = bweight)) + 
+#   geom_point(aes(color = ht, shape = sex)) 
+
+#--- Add size and a transparency argument
+# bab9 %>% ggplot(aes(x = gestwks, y = bweight)) +
+#   geom_point(aes(color = ht, shape = sex, size = matage), alpha = 0.5)
+
+#--- Add a line through the data
+# bab9 %>% ggplot(aes(x = gestwks, y = bweight)) +
+#   geom_point(aes(color = ht, shape = sex, size = matage), alpha = 0.5) +
+#   geom_smooth(method = lm, se = F, color = "black") # lm = linear model; se = F turns off CIs
+# 
+# #--- Add a title and axis labels
+# bab9 %>% ggplot(aes(x = gestwks, y = bweight)) +
+#   geom_point(aes(color = ht, shape = sex, size = matage), alpha = 0.5) +
+#   geom_smooth(method = lm, se = F, color = "black") +
+#     labs(title = "Birthweight from Gestational Weeks", 
+#             x = "Gestational Age (weeks)",
+#             y = "Birthweight (g)")
+
+#--- Add labels to the legend
+bab9 %>% ggplot(aes(x = gestwks, y = bweight)) +
+  geom_point(aes(color = ht, shape = sex, size = matage), alpha = 0.5) +
+  geom_smooth(method = lm, se = F, color = "black") +
+  scale_colour_discrete(
+    name = "Hypertension",
+    breaks = c("no", "yes"),
+    labels = c("Not Hypertensive", "Hypertensive")) +
+  scale_shape_discrete(
+    name = "Sex",
+    breaks = c("male", "female"),
+    labels = c("Male", "Female")) +
+  scale_size_continuous(
+    name = "Maternal Age",
+    breaks = c(25, 30, 35, 40),
+    labels = c("25", "30", "35", "40"),
+    range = c(1, 4)) + # range determines the relative size of the bubbles
+  labs(title = "Birthweight from Gestational Weeks",
+         x = "Gestational Age (weeks)",
+         y = "Birthweight (g)")
+
+```
+
+It seems clear that a straight line seems to represent the relationship between the two variables well. This linear relationship can be represented as $Y = A + B \cdot X$. $Y$ is the expected value of the outcome variable. $A$ is the intercept (or constant), the value that $Y$ takes when $X = 0$. $B$ is the expected increase in $Y$ per unit change in $X$. In our case, $A$ thus represents the mean birthweight when gestational age is zero, and $B$ represents the change in mean expected birthweight per additional week of gestation age.
+
+In this example you may wonder what the intercept really means. The birthweight for zero gestational age has no real meaning. It is simply a mathematical extrapolation of the regression line to the point to where it crosses the Y axis. To make intercepts interpretable, it is sometimes preferable to center variables by subtracting the mean value of $X$ from each individual $X_i$ such that $X = 0$ at the mean value of $X$.
+
+## Predicting a regression line
+
+To predict a regression line in R, we use the command lm(), where lm stands for 'linear model'. lm() takes as its first argument a formula. As we've seen before in R, a formula is indicated by a tilde (~). The tilde says 'predict what's on the left hand side of the tilde by using the right hand side'. So the outcome variable goes on the left hand side and the exposure variable goes on the right hand side. Since the formula is the first (leftmost) argument, we cannot pipe the data in directly - instead we indicate whether the piped data should go with a fullstop.
+
+```{r}
+#--- Fit a regression line and store the result
+mod1 <- bab9 %>% lm(bweight ~ gestwks, data = .)
+
+#--- Same code, no pipe
+#mod1 <- lm(bweight ~ gestwks, data = bab9)
+
+#--- Get a summary of the regression
+summary(mod1)
+
+#--- Get confidence intervals
+confint(mod1)
+```
+
+
+> Exercise 16.2: What are the estimated values of the two parameters? Write down the regression equation in the form used in the lecture notes or this practical, using  the above estimates in the equation. 
+
+From the summary, you should be able to extract the relevant information. Underneath the Coefficients table, the Estimate subheading provides the estimated values of $A$ (Intercept), -4865.25 and of $B$ gestwks, 206.64. Confidence intervals can be extracted with the confint() command. Note that a t-test is also automatically conducted. The t-test here is a test of the null hypothesis that the coefficient is equal to zero, and the p-value quantifies the strength of evidence against this hypothesis.
+
+
+>Exercise 16.3: What are the standard errors of the two parameter estimates? How strong is the evidence
+that there exists a linear association between the two variables?
+
+It is possible to use this model to predict birthweight from gestational age. We do this by using R's predict() command. These predicted values are generated from the black line that we graphed earlier in the practical. 
+
+```{r}
+#--- Generate predicted values and observe the first ten
+bab9$predicted <- predict(mod1)
+head(bab9$predicted)
+```
+
+## Correlation
+
+With linear regression, we designate one variable as the exposure variable and one as the outcome. We might also wish to know how two variables are related without this specification. To do that, we can use the correlation coefficient. The correlation coefficient is a measure of how much two variables vary together, and it takes values between -1 and 1. Values towards 0 are indicative of no correlation. Values towards 1 are indicative of positive correlation, where both variables increase together, and values towards -1 are indicative of negative correlation, where one variable decreases as the other increases.
+
+```{r}
+#--- Get correlation coefficient
+bab9 %$% cor(bweight, gestwks)
+```
+
+
+> Exercise 16.4: What is the value of the correlation coefficient? What does this mean?
+
+
+## Further Exercises
+
+We will now repeat the regression, but centering the gestational weeks variable around 39 weeks. Note that we could've created a new variable and added it to the dataset, but instead we created a temporary variable with all the values of gestwks relative to 39 weeks.
+
+```{r}
+#--- Fit a regression line with gestwks centered and store the result
+mod2 <- bab9 %>% mutate(gestwks = gestwks-39) %>% lm(bweight ~ gestwks, data = .)
+
+#--- Get a summary of the regression and confidence intervals
+summary(mod2)
+confint(mod2)
+```
+
+
+>Exercise 16.5: Which of the two coefficients has changed and why has it changed; which is the same and why is it the same? What does the estimated value of the coefficient that has changed in this model actually mean?
+
+
+
+> Exercise 16.6: Produce a scatter plot of bweight and matage. Do you think that there is a linear relationship between these variables? Estimate the regression line for these variables with bweight as the response variable and matage as the explanatory variable, then write down the estimated values of A and B and their 95% confidence intervals. What is the strength of evidence against the hypothesis that the coefficient B is zero? What is the equation of the fitted line? Display this line on the scatter plot. 
+
