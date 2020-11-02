@@ -1,0 +1,142 @@
+
+# Stratified Analysis of 2x2 Tables: Practical 13
+
+In this practical we look at stratified analysis of 2x2 tables to analyse the association between two binary variables in the presence of a confounding variable.
+
+As always, we commence by loading the appropriate libraries, changing any options, and reading in the dataset. This time we have added the library vcdExtra (to mimic Stata's expand command). Remember to first install any packages that you need.
+
+```{r, results = FALSE, warning = FALSE, message = FALSE}
+#--- Load libraries
+library(epiDisplay)
+library(foreign)
+library(psych)
+library(magrittr)
+library(vcdExtra)
+library(tidyverse)
+
+#--- Change to show no scientific notation & round to 3 decimal places
+options(scipen = 10, digits=3) 
+
+#--- Set the plot theme to come out in black and white
+theme_set(theme_bw())
+
+#--- Read in the file
+creche <- read.dta("./CRECHE.dta", convert.factors = T) 
+```
+
+## 2x2 Tables
+
+We wish to investigate whether attending a creche is associated with having had a lower respiratory tract infection.
+
+This dataset contains socioeconomic status information in the variable 'socio', information on whether an individual was cared for at home (no) or attends a creche (Yes) in the variable 'creche' and whether in the past year an individual had had a respiratory infetion in the variable 'lrti'. Note that these variables are coded as factors - R's way of coding categorical variables.
+
+The key commands here are cc() and tabpct() from epiDisplay. As we've seen, the cc() function conducts some hypothesis tests and extracts an OR, while tabpct() generates row and column percentages. To assess the strength of evidence for an association between lower respiratory tract infection and creche attendance, we can look at the result of the $\chi^2$ test.  
+
+```{r}
+#--- Get a 2x2 table with percentages
+creche %$% tabpct(lrti, creche, graph = F)
+
+#--- Get a 2x2 table with totals, tests and an OR
+creche %$% cc(lrti, creche, graph = F)
+
+```
+
+
+> Exercise 13.1: Is there an association between creche attendance and lower respiratory tract infection?
+
+## Confounding by SES
+
+Lower respiratory tract infection is strongly related to socioeconomic status (SES). If creche attendance is also related to SES we might expect confounding from SES to impact the association between lower respiratory tract infection and socioeconomic status. 
+
+To handle this confounding, we can analyse the association separately within strata defined by the confounder (stratification). 
+
+>Exercise 13.2: Use the cc() command to determine if:
+>
+> * a) creche attendance is associated with SES and 
+> * b) lower respiratory tract infection is associated with SES. What do you conclude about confounding?
+
+We can examine the 2x2 tables by group by filtering the dataset to the stratum we wish to investigate and then using the tabpct command. The _filter()_ command comes from **dplyr** (in the **tidyverse**) and is used to select rows in the dataset meeting a certain condition. Note the chaining of two types of pipes here. We restrict the dataset first, then put it into the function we want to use second. 
+
+```{r}
+#--- Look at association between LRTI and Creche by strata of SES
+creche %>% filter(socio == "Average SES") %$% tabpct(lrti, creche, graph = F)
+creche %>% filter(socio == "Very low SES") %$% tabpct(lrti, creche, graph = F)
+```
+
+
+> Exercise 13.3: What percentage of children attending a creche had lower respiratory tract infection if they were from a higher SES? A lower SES?
+
+
+While the cc() command calculates the odds ratio for you, it is useful to note that in R you can simply do this 'by hand'. There is no need to use the display command like in Stata. 
+
+```{r}
+#--- Get the 2x2 table
+creche %$% cc(lrti, creche, graph = F)
+
+#--- Calculate the odds and odds ratio 'by hand'
+27/62 # odds of LRTI in creche goers
+53/499 # odds of LRTI in creche goers
+(27/62)/(53/499) # OR
+(499*27)/(62*53) # Alternate calculation of OR
+
+```
+
+## Mantel-Haenszel OR
+
+We saw that socio-economic status may be confounding the relationship between creche attendance and lower respiratory tract infection. Thus we should examine the odds ratio for the effect of creche attendance on lower respiratory tract infection in each stratum of SES separately. We can then combine these estimates by taking a weighted average to come up with a summary value. We call this the effect of creche attendance controlled for socioeconomic status - in the case of odds ratios, we call this the Mantel-Haenszel odds ratio. 
+
+Intuitively, we have here tried to control for confounding by SES. When we look at the relationship between LRTI and creche attendance within a stratum of SES, since everyone has the same SES, any association between LRTI and creche attendance should not be due to SES.
+
+In R, we use epiDisplay's mhor command to conduct this test, providing the odds ratio, 95% confidence interval, and p-value for each stratum and overall. The test for homogeneity of ORs tests the hypothesis that the ORs in the strata are the same (i.e. it tests for effect modification)
+
+```{r}
+#--- Get the Mantel-Haenszel OR
+creche %$% mhor(lrti, creche, socio, graph = F)
+```
+
+
+> Exercise 13.4: Using the results above: 
+>
+> * a) what is the MH odds ratio controlling for SES and what does it mean? 
+> * b) How does this differ from the OR for the effect of creche attendance on lower respiratory tract infection ignoring SES? 
+> * c) Why has the OR decreased? 
+> * d) Interpret the 95% CI for the MH OR.
+
+## Pre-prepared Tables
+
+Sometimes, we may wish to use data from prepared tables instead of individual rows. Let's examine the use of bednets and the presence of an enlarged spleen. We want to manually enter four columns and we can do this using the command c() -- 'c' stands for concatenate and creates 'vectors' of numbers (recall: a vector is a list of objects of the same data type). Each of the three variables take two codes. Village A is coded 1, and village B is coded 2. Spleen enlarged is coded 1, and spleen normal is coded 0. Those with bednets are coded 1 and those without are coded 0. 
+
+We can then combine the individual vectors together into a dataframe using the cbind() command, short for column bind. There is an equivalent rbind() command for rows.
+
+We can expand to individual rows using the expand.dft() command from the **vcdExtra** package, to mimic Stata's _expand_ command. Note that we have to wrap the output in the as.data.frame() command to explicitly tell R we would like the resulting dataset in the dataframe format, the same format we have been using for all our other datasets.
+
+We can then tabulate the data in the usual way, using the cc() command.
+
+```{r}
+#--- Manually enter the data for each column
+village <- c(1,1,1,1,2,2,2,2)
+spleen <- c(1,1,0,0,1,1,0,0)
+bednet <- c(1,0,1,0,1,0,1,0)
+freq <- c(12,42,12,29,15,4,52,12)
+
+#--- Bind together the columns into one data frame
+bednets <- cbind(village, spleen, bednet, freq)
+
+#--- Expand the frequency table into individual records
+bednets <- as.data.frame(expand.dft(bednets, freq = "freq"))
+
+#--- Get a summary table
+bednets %$% cc(spleen, bednet, graph = F)
+
+#--- Get village specific summary tables
+bednets %>% filter(village == 1) %$% tabpct(spleen, bednet, graph = F)
+bednets %>% filter(village == 2) %$% tabpct(spleen, bednet, graph = F)
+
+```
+
+
+> Exercise 13.4: 
+> * a) Which is the response variable?
+> * b) Does the prevalence of spleen enlargement differ between villages?
+> * c) Use cc() to examine the association of using bednets and the prevalence of spleen enlargement, ignoring village.
+> * d) Use filter() and cc() to examine the association of using bednets and the prevalence of spleen enlargement separately by village, and to examine this association when controlling for village.
