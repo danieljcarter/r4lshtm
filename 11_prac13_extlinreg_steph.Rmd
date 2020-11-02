@@ -1,0 +1,280 @@
+
+# Extended Linear Regression: Practical 17
+
+This practical extends the simple linear regression from the last practical to the context of multiple regression. While it is usually desirable to commence any analysis looking at the relationships between individual variables, often we want to look at how a particular outcome is affected by multiple variables. This is usually undertaken for to distinct reasons:
+
+1. To fit a predictive model. For example, if recovery time from an operative procedure can be shown to depend on a group of variables which can be measured prior to the time of the operation, then it might be possible to predict which patients have a poor prognosis and to consider an alternative therapy for them.
+
+2. To fit a causal model. We may be interested in the effect of changes in a single exposure variable on the outcome variable, but nevertheless recognise that the outcome may also be affected by changes in other variables. For example, as part of a study looking at whether haemoglobin level (Hb) or haematocrit (PCV) are risk factors for death due to ischaemic heart disease, a strong correlation was found between Hb and PCV and also between Hb and age. Was the relationship between Hb and PCV only apparent because they both increase with age or are they still related when age is taken into account? In other words, can we account for the confounding by age? We can view age as a common cause of Hb and PCV that we wish to control for to get at the true relationship between the exposure and outcome variables.
+
+## Practical Example
+
+This practical is based on data from women aged 15-49 years from a rural area of The Gambia. One of the aims of the study was to look at factors affecting depression in these women. A series of questions were asked and a depression score was derived from the answers. The score can take any value between 0 (indicating no depression) up to 24 (indicating severe depression). 
+
+The factors which might affect depression in this dataset are:
+a) The number of living children the woman has. In this area, where a woman’s status is thought largely to depend on her fertility, the hypothesis was that depression would be associated with lower numbers of children.
+b) Prolapse (on clinical examination). Another hypothesis was that this common condition, which is rarely diagnosed and treated in this community, might be associated with depression.
+
+The dataset is called depress.dta and the variables are as follows:
+ * age : Single years; range 15 to 49 years
+ * depscore : Depression score; range 0 to 24
+ * children : Number of living children; range 0 to 11
+ * any_prolapse : Whether woman had a prolapse; 0 = normal, 1 = prolapse seen on examination
+ * type_prolapse : Type of prolapse a woman had; 0 = none, 1 = moderate, 2 = severe
+
+We commence in the usual way by loading libraries, setting options, and reading in data.
+
+```{r, results = FALSE, warning = FALSE, message = FALSE}
+#--- Load libraries
+library(epiDisplay)
+library(foreign)
+library(psych)
+library(magrittr)
+library(tidyverse)
+
+#--- Change to show no scientific notation & round to 3 decimal places
+options(scipen = 10, digits=3) 
+
+#--- Set the plot theme to come out in black and white
+theme_set(theme_bw())
+
+#--- Read in the file
+depress <- read.dta("./depress.dta", convert.factors = T) 
+depress <- read.dta("E:/LSHTM/Teaching/r4steph/depress.dta", convert.factors = T)
+```
+
+## Linear Regression
+
+We first create a quick scatterplot and run a simple linear regression to look at the relationship between depression and the number of children a woman has. A so called bubble plot perhaps better displays this relationship - the size of the bubble is proportional to the number of individuals with that particular combination of x and y values.
+
+```{r}
+#--- Plot depression score with scatterplot
+depress %>% ggplot(aes(x = children, y = depscore)) + geom_point()
+
+#--- Plot depression score with bubble plot
+depress %>% ggplot(aes(x = children, y = depscore)) + geom_count()
+
+#--- Run linear regression 
+mod1 <- depress %>% lm(depscore ~ children, data = .) 
+summary(mod1)
+confint(mod1)
+
+#--- Alternate ways of running this code - choose your favourite!:
+#--- 1) to get the summary in one line 
+depress %>% lm(depscore ~ children, data = .) %>% summary()
+
+#--- 2) to get neatly displayed coefficients and confidence intervals using epiDisplay
+lm(depscore ~ children, data = depress) %>% regress.display()
+```
+
+
+> Exercise 17.1: 
+> * a) What is the equation of the regression line?
+> * b) Is the association between depression score and number of living children positive or negative?
+> * c) By how much does the depression score increase for each extra living child? (i.e. what is the regression coefficient for children)
+> * d) Is there any evidence that the slope of the line is not zero?
+
+
+An approximate 95% confidence interval is given by:
+
+$$ \hat{\beta} \pm 1.96 x se(\hat{\beta}) $$ 
+
+where $\hat{\beta}$ is the estimated coefficient and $se(\hat{\beta})$ its standard error. We can test the null hypothesis that the estimated coefficient is zero with:
+
+$$ T = \beta / se(\beta) $$
+
+The standard error, the t-value, and its associated p value are all given in the standard summary() output. 
+
+## Multiple Linear Regression
+
+The estimated coefficient suggests that depression increases with number of children. However, age might be a common cause of depression and number of children, and will thus be associated with both. So we might consider age to be confounding the relationship between depression and number of children, and thus control for it using multiple linear regression.
+
+We apply our heuristic for confounding by checking whether age is associated with number of children.
+
+> Exercise 17.2: Is age associated with number of living children?
+
+
+We also wish to check whether age is associated with the depression score. Note that you could also use scatter plots to investigate this relationship.
+
+
+> Exercise 17.3: Is age associated with depression score?
+
+
+It should be clear that age is not on the causal pathway between number of children and depression score. Because our variables are continuous, instead of doing a stratified analysis with a Mantel-Haenszel test, we will use multiple regression. 
+
+```{r}
+#--- Run multiple linear regression 
+mod2 <- depress %>% lm(depscore ~ children + age, data = .)
+summary(mod2)
+confint(mod2)
+
+#--- To obtain Stata-like output
+lm(depscore ~ children + age, data = depress) %>% regress.display()
+
+```
+
+Note how we have changed the formula on the right hand side of the tilde. In the summary() output, R gives two regression coefficients. 
+
+We can interpret the regression coefficient for children as follows: for a given age, the depression score decreases on average by 0.00486 for every extra living child. This is very different to the increase that was found for children when age was not adjusted for.
+
+If we look at the confidence interval for the coefficient for children it goes from -0.0917 to 0.082. Therefore there is no evidence that the slope in this case is not zero and our final conclusion would be that, after controlling for the confounding effect of age, depression among these women does not appear to be associated with the number of living children.
+
+In theory, we could extend this model to include a number of other explanatory variables (or potential confounders). 
+
+We have introduced multiple regression as a way of looking at quantitative (continuous) variables, but the regression framework is also able to accommodate binary and categorical variables. We will now use regression to look at the association between having had a prolapse and depression. 
+
+We first look at the mean depression score by the prolapse variable. The group_by() command says to group the dataset and the summarise() command is used to calculate a summary statistic of the groups. We could use a number of other statistics in the summarise() function.
+
+```{r}
+#--- Get mean depression score by group
+depress %>% group_by(any_prolapse) %>% summarise(mean = mean(depscore))
+```
+
+We can examine these differences under two approaches: one-way ANOVA or linear regression. To do a one-way ANOVA in R we use the following command:
+
+```{r}
+#--- One-way ANOVA for any_prolapse on depression score
+depress %>%  aov(depscore ~ any_prolapse, data = .) %>% summary()
+```
+
+> Exercise 17.5: Use the above two lines of code to find out:
+>
+> * a) The mean depression score for women without a prolapse
+> * b) The mean depression score for women with a prolapse
+> * c) The F statistic for the analysis of variance
+> * d) The p-value for the null hypothesis that the means are the same in both groups
+> * e) How would you interpret these results?
+
+
+We can also run the same analysis with linear regression, by 'pretending' that the binary variable is a continuous variable, and assuming that a '1 unit increase' in any_prolapse means going from no prolapse to having had a prolapse.
+
+```{r}
+#--- Linear regression for any_prolapse on depression score
+depress %>% lm(depscore ~ any_prolapse, data = .) %>% summary()
+```
+
+
+>Exercise 17.6: Compare the results of the two analyses. What do you notice? What is the relationship between the F  statistic and the t statistic? 
+
+## Multiple Regression with Categorical Data
+
+The relationship should be evident from the regression equation for these data. That equation is:
+
+$$ depscore = \alpha + \beta*(prolapse) $$
+
+If any_prolapse takes the value 0 (for no prolapse), then the regression equation simplifies to $ depscore = \alpha $. So this means that $\alpha$ represents the mean value of depscore for women with no prolapse.
+
+If any_prolapse takes the value 1 (for any prolapse), then the regression equation simplifies to $ depscore = \alpha + \beta $. So this means that $\alpha + \beta$ represents the mean value of depscore for women who have experienced prolapse. 
+
+The difference in these two means is $(\alpha + \beta) - \alpha = \beta$ and thus the regression coefficient $\beta$ represents the difference in mean depression scores between women who don't have a prolapse and women who do.
+
+From these results, we might conclude that women who have a prolapse experience higher depression scores. We might then want to examine if severity of prolapse affects depression scores.
+
+Severity of prolapse is a categorical variable, indicating whether a woman had experienced moderate or severe prolapse. In Stata, the prefix i. is added to the front of the variable to indicate that it is a categorical variable. R handles categorical variables slightly differently.
+
+Each variable in R has a particular type, including integer (for numbers), string (for letters), and factor (for strings that represent categorical variables). As shown in previous practicals, we can check the type of a variable using the class() command.
+
+```{r}
+#--- Check what the type of variable the type_prolapse variable is.
+depress %$% class(type_prolapse)
+
+#--- Check the order of the levels of the factor
+depress %$% levels(type_prolapse)
+
+fct_explicit_NA()
+
+
+```
+
+We can conduct a regression with a categorical variable by estimating two parameters: the difference in expected depression score going from no prolapse to moderate prolapse and the difference in expected depression score going from no prolapse to severe prolapse. In this way, we consider 'no prolapse' to be our baseline group. We can see the variables are already ordered this way in R.
+
+```{r}
+#--- Linear regression for any_prolapse on depression score
+depress %>% lm(depscore ~ type_prolapse, data = .) %>% summary()
+```
+
+
+
+> Exercise 17.7: Look at the regression results. What are the values of:
+>
+> * a) The intercept of the regression line with the Y axis
+> * b) The regression coefficient for moderate prolapse
+> * c) The regression coefficient for severe prolapse
+> * d) The F statistic
+> * e) Do the confidence intervals for the regression coefficients contain zero?
+
+Again we may wish to look at age as confounding the relationship between prolapse and depression score. We conduct a regression to examine the relationship between age and type of prolapse. 
+
+```{r}
+#--- Regression of age and type of prolapse
+depress %>% lm(age ~ type_prolapse, data = .) %>% summary()
+```
+
+
+
+> Exercise 17.8: Is there evidence against the null hypothesis of association? Without any further code how do you think the results would be different if you used any_prolapse instead of type_prolapse?
+
+We look at the age-adjusted association between type of prolapse and depression score.
+
+```{r}
+#--- Age-adjusted multiple regression for type of prolapse
+depress %>% lm(depscore ~ type_prolapse + age, data = .) %>% summary()
+
+#--- 95% CIs
+lm(depscore ~ type_prolapse + age, data = depress) %>% regress.display()
+
+```
+
+
+> Examine the unadjusted and age-adjusted coefficients for type of prolapse and their 95% CIs.
+> * a) Does age confound the association between type_prolapse and depression score?
+> * b) Are prolapse and depression score associated once you have adjusted for age? 
+```
+
+## Appendix
+
+This appendix describes more about how regression models are fit using the example above.
+
+'Goodness of fit' is a statistical concept referring to how close the model is to the data. Two commonly used ways to assess fit are by looking at the $R^2$ value and by conducting an F-test.
+
+### Comparing Regression models
+
+We fit the following model: 
+
+$$ Y = \alpha + \beta_1{x_1} $$ 
+with the following code:
+
+```{r}
+#--- Simple model
+depress %>% lm(depscore ~ children, data = .) %>% summary()
+```
+
+
+$Y$ is the depression score, $\alpha$ is the intercept, and $\beta_1$ represents the expected increase in depression score for each additional child, where the number of children is represented by $x_1$. We can use this model to get a predicted depression score for each individual on the basis of the number of children they have:
+
+$$ P = 5.95 + 0.38 * x_1 $$
+So if an individual had three children, we would predict they had a depression score of about $5.95 + 0.38*3 = 7.09$. 
+
+We can then calculate the difference in individuals' _observed_ depression score ($Y$) with their _predicted_ depression score, and we call this difference ($Y - P = $) the residual. If we sum the squares of each residual value $\Sigma (Y - P)^2 $ we get the 'residual sum of squares' ($RSS$). The $RSS$ therefore measures how much variation there is in the modelling errors - the further the points are on average from the line, the higher the $RSS$. The regression line is in fact fit to minimise the $RSS$. 
+
+We might also wish to calculate how much variation there is in the modelled points, via the model sum of squares ($MSS$). We can do this by comparing how each modelled point is different to the mean of the points taken as a whole. If we sum all these differences together, we would get 0 (as mean is in the middle of the dataset and the positive and negative differences will cancel out) If we call the mean of the observed depression scores $M$, then $MSS = \Sigma (Y - M)^2$. 
+
+We can also calculate how much variation there is in the observed data as a whole, using the total sum of squares ($TSS$). This is measured by the sum of the squared differences between each observed depression score and the mean depression score $TSS = \Sigma (Y - M)^2$. 
+
+These quantities are related to each other: $TSS = MSS + RSS$. Based on this formula, as the $MSS$ goes up, the $RSS$ must go down. For our model to have a good fit, we would like the $MSS$ to be large relative to the $RSS$. 
+
+One way of doing this is by calculating $R^2$, which tells us how much of the total variation in the data was explained by the model. It is calculated as $R^2 = MSS/TSS$. We see from the summary code that R provides us with a 'Multiple R squared' and an 'Adjusted R squared'. The multiple R squared is equivalent to that given in Stata: 0.09. The adjusted R squared takes into account the number of parameters estimated by the model by dividing the sums of squares by the degrees of freedom (each additional parameter results in the loss of one degree of freedom) to thus obtain the mean squares.
+
+We can use the mean squares to conduct an F test. We divide the model and residual sums of squares by the degrees of freedom to get the mean squares $MMS$ and $RMS$ respectively. We can then derive an F statistic for the model using $F = MMS/RMS$ and compare to a critical value. As the model explains more variation than there is residual variation, the F statistics will get larger and there will be more evidence that the model fit is better than a fit with an intercept alone. This is given 
+
+
+
+We fit the following model for type_prolapse, where $Y$ is the depression score, $\alpha$ is the intercept, $\beta_1$ is 0 when there is no moderate prolapse and 1 where there is a moderate prolapse, and $\beta_2$ is 0 when there is no severe prolapse and 1 where there is a severe prolapse. Thus the intercept represents the value of depression score when there is no prolapse, and each of the $\beta$ coefficients represent the change in going from no prolapse to their associated type of prolapse.
+
+$$ Y = \alpha + \beta_1{x_1} + \beta_2{x_2} $$ 
+
+We get estimated values from fitting the model and substitute in our estimates to get predicted values $P$: 
+
+$$ P = 27.7 + 6.5x_1 + 6.3x_2 $$
+
+We can calculate from this a predicted value of depression score for each individual. If the individual has not had a prolapse, their predicted value will simply be 27.7, as both $x_1$ and $x_2$ are equal to 0 and thus these terms 'drop out' of the model. For someone with a moderate prolapse, only $x_2$ is equal to 0, and thus only the last term 'drops out'. We thus then predict a value of 27.7 + 6.5 = 34.2. For someone with severe prolapse, the middle term drops out of the model and we predict a value of 27.7 + 6.3 = 34.0.
