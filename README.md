@@ -1,2 +1,3 @@
 # r4lshtm
-Collation of Intro R material, R for STEPH, R for SME, and R for ASME - 2020
+
+Welcome to R for LSHTM, 2022 edition. This repository collates all of the practical sessions from the statistical course sequence at LSHTM: STEPH, SME, and ASME.
