@@ -1,3 +1,6 @@
+---
+title: "Session 3 - Summarising Data"
+---
 
 
 # Summarising Data

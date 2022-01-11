@@ -1,3 +1,6 @@
+---
+title: "Session 2 - Visualising Data"
+---
 
 # Visualising Data
 

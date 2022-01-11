@@ -1,4 +1,6 @@
-
+---
+title: "Session 4 - Tidying Data"
+---
 
 # Tidying Data 
 
