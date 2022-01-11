@@ -1,0 +1,409 @@
+---
+title: "R for SME - 2022 - Sessions 2 & 3: Survival Analysis"
+author: Andrea Mazzella [link](https://github.com/andreamazzella) & Daniel J Carter[link](https://github.com/danieljcarter)
+output: html_notebook
+---
+
+Welcome to R for SME for 2022. This material has been developed by a former MSc Epi student, Andrea Mazzella, and adapted by Daniel J Carter. 
+
+This practical session will walk you through how to do the basics of Survival Analysis in R. If you are starting fresh with R, that's no problem! I recommend at minimum working through the introductory material contained in the Visualising Data, Summarising Data, and Modelling Data notebooks before commencing the practicals.
+
+This notebook covers the material used in both Practical 2 (2022) and Practical 3 (2022) but only works through the questions from Practical 3 as the code introduced is the same that you might use in completing Practical 2. If there are any questions about the material from Practical 2 in R, please contact Dan (daniel.carter1@lshtm.ac.uk).
+
+---
+
+# Part 1: Introduction
+ 
+Before analysing the Trinidad dataset for Practical, we'll look at R's stset equivalent with a sample dataset, "ovarian". 
+
+---
+
+## A) Preliminaries
+
+1. Install these packages (if you haven't already - do this just once)
+
+```{r Install packages}
+install.packages("survival")
+install.packages("surviminer")
+install.packages("magrittr")
+install.packages("lubridate")
+install.packages("epitools")
+install.packages("tidyverse")
+```
+
+
+2. Load their libraries (do this every time)
+
+```{r Load libraries}
+library(survival)
+library(survminer) # to get Kaplan-Meier plots in a ggplot-like style
+library(magrittr) # for the %$% pipe
+library(lubridate) # for easier calculations with dates
+library(haven) # to import dta files
+library(epitools)
+library(tidyverse) # as usual
+```
+
+---
+
+## B) Data exploration
+
+3. Load the "ovarian" dataset, which is part of the survival package, and explore it. It contains data from a trial comparing two treatments for ovarian cancer.
+
+```{r Explore data}
+#--- Run the below to get more information on the variables & their meaning
+?ovarian 
+
+#--- Explore the data
+View(ovarian)
+glimpse(ovarian)
+summary(ovarian)
+```
+
+---
+
+##  C) Creating a survival object
+
+In the R {survival} package, the equivalent command of Stata's "stset" is *Surv()*. Unlike Stata, it doesn't require dates as input; it requires pre-calculated time intervals (so, number of days). In the ovarian dataset, this is already (conveniently...) calculated for you in the variable _futime_. Censoring information is given by the event variable _fustat_ -- this is a status indicator, usually (but not always) coded as 0 = alive and 1 = dead.
+
+```{r Survival object}
+
+#--- Create a survival object
+ovarian_surv <- ovarian %$% Surv(time = futime, event = fustat)
+
+#--- Examine output
+ovarian_surv
+```
+
+As you can see, Surv() creates a list of numbers (which represent the days of follow-up) followed by a "+" if the observation is censored. These numbers are the equivalent of the _t variable that Stata creates once you stset your dataset.
+
+---
+
+## D) Create a survival table
+
+*survfit()* requires a formula containing your survival object. 
+
+The left hand side (LHS) of the formula, before the tilde, indicates the outcome: in this case, survival (both follow-up time and censoring). The right hand side (RHS) after the tilde is used for any explanatory variables: these might be a primary exposure and confounders, for example. You can read R formulas like "x ~ y + z" as 'predict the value of x from the values of y and z'.
+
+For the simplest survival table where we just wish to view the outcome data without any explanatory variables, the RHS is set to 1 - this is because formulas always need a LHS and a RHS. 
+
+
+```{r Survival table}
+#--- Get an overall picture of survival
+ovarian %>% survfit(ovarian_surv ~ 1, data = .)
+
+#--- Get a more detailed summary
+kmfit <- ovarian %>% survfit(ovarian_surv ~ 1, data = .)
+summary(kmfit, times = 365.25)
+```
+
+We can see that there were 26 individuals experiencing 12 events, with a median followup time of 638 days. The summary() call with the 'times' option lets us see the probability of survival at a given time - in this case, a year.
+
+If you want to stratify the cohort, we can add to the RHS of the formula. The ECOG scale measures levels of functioning in terms of ability to care for oneself and undertake daily activities, with 0 being fully active and 4 being completely unable to carry out such tasks. The scores of 1 & 2 in this dataset sit between these extremes on the scale.
+
+
+```{r Survival table by PS}
+#--- Get basic statistics by group
+ovarian %>% survfit(ovarian_surv ~ ecog.ps, data = .)
+```
+
+---
+
+## E) Create Kaplan-Meier (KM) plots
+
+*ggsurvplot()* is a function from {survminer} that allows you to plot KM curves using ggplot's functions.
+It takes a survfit() object as its main argument.
+
+The following code generates the simplest KM plot, with the whole cohort. A 95% CI is provided in the shaded ribbon, with the '+'s indicating censoring.
+
+```{r KM curve}
+#--- Basic KM plot
+ovarian %>% ggsurvplot(fit = survfit(ovarian_surv ~ 1, data = .))
+```
+
+We stratify here by ecog score. To get 95% CIs, add the 'conf.int = T' option to ggsurvplot().
+
+```{r KM curves by PS}
+#--- Stratified KM plot
+ovarian %>% ggsurvplot(fit = survfit(ovarian_surv ~ ecog.ps, data = .))
+```
+
+There are many options to customise these plots - see the below for some examples.
+
+```{r Better KM curves}
+#--- Model
+stratfit <- survfit(ovarian_surv ~ ecog.ps, data = ovarian)
+
+#--- Plot
+ggsurvplot(
+  fit = stratfit,
+  pval = TRUE,
+  censor = FALSE,
+  xlab = "Days",
+  legend.title = "ECOG performance status",
+  legend.labs = c("1", "2")
+)
+
+```
+
+If you want more to do more complicated things with survminer or ggsurvplot(), check out this cheatsheet: [link](https://rpkgs.datanovia.com/survminer/survminer_cheatsheet.pdf).
+
+---
+
+## F) Log-rank test
+
+We conducted a log-rank test above in the plot, but we can also calculate it directly using the _survdiff_ function. We conclude that there is no evidence against the null hypothesis for a difference in survival by ECOG score.
+
+```{r}
+#--- Log rank test
+survdiff(ovarian_surv ~ ecog.ps, data = ovarian)
+```
+
+---
+
+# Part 3: SME practical 3
+
+> Q1
+
+NOTE: FOR THIS PRACTICAL, YOU WILL NEED TO USE THE STATA 17 DATASETS UNDER THE R MATERIAL HEADING ON THE MOODLE PAGE.
+
+Read in the Trinidad data (trinmlsh17.dta; remember that you need to put it into the folder where this .Rmd file is on your computer) and familiarise yourself with it. 
+
+- What are the outcome variables?
+- What are the follow-up time variables and which type are they?
+- Bonus question: why is the way in which variables such as "smokenum" are coded slightly problematic?
+
+```{r Data import}
+#--- Import the dataset
+trin <- read_dta("./trinmlsh17.dta") %>% as_factor(.)
+
+#--- Familiarise yourself with the data
+View(trin)
+glimpse(trin)
+summary(trin)
+```
+
+
+> Q2 & Q4
+
+Examine the overall survival experience of these men, i.e. analyse the outcome called death.
+Use the Kaplan-Meier method to produce a survival curve for overall mortality in the complete cohort.
+
+Before we can make a survival curve, we need to Surv() the data. But the trinidad dataset does not have the times in the format that Surv() wants.
+
+First, we need to calculate the difference in years between the dates of entering and exiting the study. {lubridate}'s *%--%* pipe, which calculates a time interval between two variables that represent dates, is very useful for this. We use dyears(1) in the denominator to express that the column should be expressed in years.
+
+The *%<>%* pipe combines an assignment with a %>% pipe. The first line of code is therefore equivalent to: "trin <- trin %>%". USE WITH CAUTION :)
+
+```{r}
+#--- Create follow-up time variable
+trin %<>%
+  mutate(followup = as.duration(timein %--% timeout) / dyears(1))
+
+trin %$% summary(followup)
+```
+
+Then, we can create a survival object with Surv() and create a Kaplan-Meier plot, as we did earlier.
+
+```{r}
+#--- Create Surv object
+trinsurv <- trin %$% Surv(time = followup, event = death)
+
+#--- Kaplan Meier plot
+ggsurvplot(
+  fit = survfit(trinsurv ~ 1, data = trin),
+  censor = F,
+  xlab = "Years"
+  )
+```
+
+
+> Q3
+
+Examine the cumulative survival probability among these patients at 1, 3, and 5 years. The c() function stands for concatenate and tells R to produce the summary for all years of interest.
+
+
+```{r}
+#--- Cumulative survival probability
+survfit(trinsurv ~ 1, data = trin) %>%
+  summary(., times = c(1, 3, 5))
+```
+
+
+> Q5
+
+From smokenum, create a new variable called "smokstatus" that identifies the participants who were active smokers at entry into the study.
+
+
+```{r}
+#--- Unify non-smokers + ex-smokers vs current smokers
+trin %<>%
+  mutate(smokstatus = as.factor(
+    case_when(
+      smokenum == "non-smok" ~ "non-smoker",
+      smokenum == "ex-smoke" ~ "non-smoker",
+      smokenum == "1-9 cigs" ~ "active smoker",
+      smokenum == "10-19 ci" ~ "active smoker",
+      smokenum == "20-29 ci" ~ "active smoker",
+      smokenum == "30+ cigs" ~ "active smoker"
+    )
+  ))
+
+#--- Check the new variable
+
+trin %$% table(smokstatus, smokenum)
+```
+
+Now compare the survival curves of active smokers vs non-smokers.
+
+- Do they look different?
+
+```{r}
+#--- KM plot stratified
+ggsurvplot(
+  fit = survfit(trinsurv ~ smokstatus, data = trin),
+  censor = F,
+  conf.int = F,
+  xlab = "Years",
+  legend.title = "Smoking status",
+  legend.labs = c("non-smokers", "active smokers")
+  )
+```
+
+
+> Q6
+
+Use a log-rank test to compare these two survival curves.
+- Is there evidence to say they are different?
+
+```{r}
+survdiff(trinsurv ~ smokstatus, data = trin)
+```
+
+> Q7
+
+Read in now the mortality17.dta dataset.
+
+```{r}
+#--- Import the dataset
+mort <- read_dta("./mortality17.dta") %>% as_factor(.)
+
+#--- Familiarise yourself with the data
+View(mort)
+glimpse(mort)
+summary(mort)
+
+```
+
+> Q8-9
+
+We now wish to identify people with hypertension (based on systolic blood pressure above 140 mmHg). Then we will generate a Surv() object, and calculate the all-cause mortality rate per 100 person years by hypertension status, just as we did above.
+
+```{r}
+#--- Create hypertension variable
+mort %<>%
+  mutate(hyper = as.factor(
+    case_when(
+      systolic < 140 ~ "not hypertensive",
+      systolic >= 140 ~ "hypertensive"
+    )
+  ))
+
+#--- Create follow-up time variable
+mort %<>%
+  mutate(followup = as.duration(enter %--% exit) / dyears(1))
+
+#--- Create Surv object
+mortsurv <- mort %$% Surv(time = followup, event = died)
+
+
+```
+
+> Q10-11
+
+We are now asked to calculate the all-cause mortality rate per 1000 person-years by hypertension status and to calculate the rate ratio for the association between hypertension and death. Stata has built-in functions for the all-cause mortality rate, but as of writing (Jan 2022) there are no maintained functions in R to that mimics this. They are presented here using 'by hand' calculations from the formulae given in Kirkwood and Sterne.
+
+For an equivalent to _stmh_ we can use the rateratio() function from epitools.
+
+```{r}
+
+#--- Calculate rates per 1000 person years
+mort %>% 
+  group_by(hyper) %>% 
+  drop_na %>% 
+  summarise(died = sum(died),
+            followup = sum(followup)/1000,
+            rate = (died/followup),
+            ci_lower = rate/exp(qnorm(0.975)*sqrt(1/died)),
+            ci_upper = rate*exp(qnorm(0.975)*sqrt(1/died)))
+
+#--- Calculate rate ratio
+mort %>%
+  group_by(hyper) %>% 
+  drop_na %>% 
+  summarise(died = sum(died),
+            followup = sum(followup)/1000) %>% 
+  select(-hyper) %>% # create table as above without extra variables
+  as.matrix() %>% # convert to matrix as rateratio() takes a matrix not a dataframe
+  rateratio(., rev = "rows") # reverse rows to get RR > 1
+
+```
+
+
+> Q12-Q17
+
+This question set asks you to compare survival in people with and without hypertension, first by looking at the Kaplan Meier survival table and then at the Kaplan Meier survival plot, conducting a log-rank test. Question 18 is omitted here as it is specific to stset in Stata.
+
+From a pedagogical perspective, I recommend at this point attempting in the code chunk below to conduct these questions yourself adapting the code above, rather than running the pre-written code -- it might be difficult but will aid your learning and ensure you might be able to conduct these analyses on your own when you encounter them.
+
+```{r}
+#--- YOUR OWN CODE HERE
+
+
+```
+
+Pre-written code:
+
+```{r}
+
+#--- Q13: Cumulative survival probability
+survfit(mortsurv ~ 1, data = mort) %>%
+  summary(., times = c(0.5, 1, 1.5, 2, 2.5, 3))
+
+#--- Q14: KM plot without CIs
+ggsurvplot(
+  fit = survfit(mortsurv ~ hyper, data = mort),
+  censor = F,
+  conf.int = F,
+  xlab = "Years",
+  legend.title = "Hypertension",
+  legend.labs = c("Hypertensive", "Not Hypertensive")
+  )
+
+#--- Q15: KM plot with CIs
+ggsurvplot(
+  fit = survfit(mortsurv ~ hyper, data = mort),
+  censor = F,
+  conf.int = T,
+  xlab = "Years",
+  legend.title = "Hypertension",
+  legend.labs = c("Hypertensive", "Not Hypertensive")
+  )
+
+#--- Q16: Cumulative mortality
+ggsurvplot(
+  fit = survfit(mortsurv ~ hyper, data = mort),
+  fun = "event",
+  pval = TRUE,
+  censor = FALSE,
+  xlab = "Years",
+  legend.title = "Hypertension",
+  legend.labs = c("Hypertensive", "Not Hypertensive")
+)
+
+#--- Q17: Logrank test
+survdiff(mortsurv ~ hyper, data = mort)
+
+```
+
+Congrats on completing Practical 3! :)
