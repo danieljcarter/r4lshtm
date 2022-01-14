@@ -1,0 +1,259 @@
+---
+title: "R for SME 6: Analysis of an unmatched case-control study"
+author: Andrea Mazzella [link](https://github.com/andreamazzella) & Daniel J Carter
+---
+
+This R notebook takes you through Practical 6 for SME in 2022 around the analysis of unmatched case-control studies.
+
+# Part 1: Introduction
+
+## A) Basics
+
+Install these packages if you haven't already.Two of these are new to this practical, required to get some of the tests present within it.
+
+```{r}
+# install.packages("epiDisplay")
+# install.packages("pubh")
+# install.packages("statix")
+```
+
+Load libraries & turn off scientific notation.
+
+```{r}
+library(haven)
+library(magrittr) # %$% pipe
+library(epiDisplay) # Epi functions
+library(pubh) # chi-for-trend
+library(rstatix) # test-for-trend
+library(tidyverse) # %>% pipe, data management...
+
+#--- Turn scientific notation off
+options(scipen=999)
+```
+
+
+## B) Data exploration & management
+
+Make sure you have the mwanza17.dta dataset in the same folder as this .rmd, and load it. It contains data on HIV infection among women in Mwanza, Tanzania.
+
+Frustratingly, this dataset does not have value labels! We will have to generate many of them ourselves.
+
+```{r}
+#--- Import the dataset
+mwanza <- read_dta("./mwanza17.dta") %>% as_factor(.)
+```
+
+Familiarise yourself with the data
+
+```{r}
+#--- Explore
+View(mwanza)
+glimpse(mwanza)
+summary(mwanza)
+```
+
+> Q1. Recategorise the variables "ed" and "age1" into two new variables called ed2 and age2 so that:
+- ed2 is binary (1 = No education; 2 = Some education)
+- age2 is grouped this way: 1 = 15-24, 2 = 25-34, 3 = 35+ years.
+
+
+```{r}
+#--- Tabulate all possible values of ed and age1
+mwanza %$% table(ed)
+mwanza %$% table(age1)
+
+#--- Recategorise and label education level
+mwanza %<>%
+  mutate(ed2 = as.factor(
+    case_when(
+      ed == 1 ~ "No education",
+      ed == 2 ~ "Some education",
+      ed == 3 ~ "Some education",
+      ed == 4 ~ "Some education"
+    )
+  ))
+
+#--- Recategorise and label age
+mwanza %<>%
+  mutate(age2 =  as.factor(
+    case_when(
+      age1 <= 2 ~ "15-24",
+      age1 == 3 | age1 == 4 ~ "25-34",
+      age1 == 5 | age1 == 6 ~ "35+"
+    )
+  ))
+
+#--- Check it worked
+mwanza %$% table(ed, ed2)
+mwanza %$% table(age1, age2)
+```
+
+We'll also label the 'case' variable.
+
+
+```{r}
+# Make "case" a factor and label it
+mwanza %<>%
+  mutate(case = factor(case,
+    levels = c(0, 1),
+    labels = c("Control", "HIV case")
+  ))
+summary(mwanza$case)
+```
+
+
+## C) Data analysis
+
+> Q2. Obtain the crude OR for education as a risk factor for HIV. The commands are from {epiDisplay}: tabpct() and cc().
+
+Note that cc() also calculates the Fisher's exact test automatically.
+
+```{r}
+# 2x2 table with row percentages
+mwanza %$% tabpct(case, ed2, percent= "row", graph = F)
+
+# 2x2 table with crude OR & 95% CIs
+mwanza %$% cc(case, ed2, graph = F)
+```
+
+> Q3. Assess whether age is a confounder or an effect modifier in the association between education and HIV.
+
+To examine whether a variable is a potential confounder, we use our heuristic of whether it is associated with the outcome, associated with the exposure, and not on the causal pathway. Alternatively, we could conceive of a confounder as a common cause of education and HIV - this certainly seems to be true. We can further look for signs of confounding by holistically comparing the crude and adjusted odds ratios, adjusting using the Mantel-Haenszel method.
+
+To examine whether a variable is an effect modifier, we want to know whether the impact of education on HIV differs by age. We can do this by examining the stratum specific effects to see if they differ.
+
+Remember that both confounding and effect modification are phenomena 'outside' the data - you cannot identify them from the data alone. 
+
+To assess these we will:
+
+- Obtain tables of HIV/education stratified by age
+- Estimate ORs of HIV/education by different age groups (epiDisplay::mhor() - you need to specify the package because {pubh} also has a function called mhor)
+- Obtain the Mantel-Haenszel summary estimate of the OR
+- Interpret the test for interaction
+
+
+```{r}
+# Obtain tables of HIV/education stratified by age
+mwanza %>%
+  filter(age2 == "15-24") %$%
+  tabpct(case, ed2, percent= "row", graph = F)
+
+mwanza %>%
+  filter(age2 == "25-34") %$%
+  tabpct(case, ed2, percent= "row", graph = F)
+
+mwanza %>%
+  filter(age2 == "35+") %$%
+  tabpct(case, ed2, percent= "row", graph = F)
+
+# Estimate ORs of HIV/education by different age groups
+mwanza %$% epiDisplay::mhor(case, ed2, age2, graph = F)
+
+```
+
+We can see that there are stratum specific differences here. We would interpret the test for homogeneity as showing strong evidence against the null hypothesis that the relationship between education and HIV does not vary by age.
+
+>Q4. Assess whether religion is a confounder or an effect modifier between education and HIV infection.
+
+- The "rel" variable is coded as such: 1 = Muslim, 2 = Catholic, 3 = Protestant, 4 = Other, 9 = missing value so we will have to recode it before analysis. Note that we specify that the NA is a character so that R interprets it correctly for the conversion to factor.
+
+```{r}
+#--- Recode & convert to factor
+mwanza %<>%
+  mutate(rel = as.factor(
+    case_when(
+      rel == 1 ~ "Muslim",
+      rel == 2 ~ "Catholic",
+      rel == 3 ~ "Protestant",
+      rel == 4 ~ "Other",
+      rel == 9 ~ NA_character_
+    )
+  ))
+
+#--- Exploratory tabulation
+mwanza %$% tabpct(case, rel, percent= "row", graph = F)
+mwanza %$% tabpct(ed2, rel, percent= "row", graph = F)
+
+#--- Obtain tables of HIV/education stratified by religion
+mwanza %>%
+  filter(rel == "Muslim") %$%
+  tabpct(case, ed2, percent= "row", graph = F)
+
+mwanza %>%
+  filter(rel == "Catholic") %$%
+  tabpct(case, ed2, percent= "row", graph = F)
+
+mwanza %>%
+  filter(rel == "Protestant") %$%
+  tabpct(case, ed2, percent= "row", graph = F)
+
+mwanza %>%
+  filter(rel == "Other") %$%
+  tabpct(case, ed2, percent= "row", graph = F)
+
+#--- Estimate ORs of HIV/education by different religions
+mwanza %$% epiDisplay::mhor(case, ed2, rel, graph = F)
+```
+
+> Q5. Dealing with missing values for a potential confounder (npa)
+
+The variable npa contains information on the number of sexual partners. It's coded: 1 (0-1), 2 (2-4), 3 (5-9), 4 (10-19), 9 (missing value).
+
+- Tell R which values are missing with na_if. Observations with missing values will automatically be excluded from this analysis.
+
+```{r}
+#--- Replace "9" with "NA"
+mwanza$npa <- na_if(mwanza$npa, 9)
+
+#--- 2x2 table with crude OR
+mwanza %$% cc(case, ed2, graph = F)
+
+#--- Estimate aORs of HIV/education by number of sexual partners
+mwanza %$% epiDisplay::mhor(case, ed2, npa, graph = F)
+```
+What do you conclude about this relationship?
+
+> Q6. Exploring a dose-response relationship
+
+- Create a new variable, npa2, with values of 0, 3, 7, and 15 instead with the original values. These correspond to the average number of partners in each group.
+
+```{r}
+#--- Create npa2
+mwanza %<>% 
+  mutate(npa2 = recode(
+    npa,
+    `1` = 0,
+    `2` = 3,
+    `3` = 7,
+    `4` = 15
+  ))
+
+#--- Double check
+mwanza %$% table(npa, npa2)
+```
+
+We now perform a chi-squared test for trend of odds for the exposure npa2 and outcome. This is with the odds_trend command from the pubh package. We can clearly see the trend in ORs.
+
+```{r}
+# Odds ratio for each partner-number group compared to those with 0/1 partner.
+odds_trend(case ~ npa2, data = mwanza)
+```
+
+Perform a test for departure from trend for npa2. We do this by first calculating the chi-squared test with three degrees of freedom for a 2x4 table of case versus number of partners. The three degrees of freedom are because we are treating the npa2 variable as categorical and therefore estimating a parameter for each group. 
+
+Then we conduct a test for linear trend treating the variable as a continuous variable, and assuming that the increase in log odds between each level is the same. Hence we just fit one continuous parameter. We want to compare the difference in these two models - does the increased number of parameters in the categorical case lead to a much better fit as per the chi-square statistics?
+
+We subtract the two chi-squared statistics from one another and get the relevant p value with pchisq() with 2 df (3-1) - what do you conclude?
+
+```{r}
+#--- Test for trend - {statix}
+case_by_npa2 <- mwanza %$% table(case, npa2)
+prop_trend_test(case_by_npa2)
+
+#--- Calculate difference between chi2 and trend test
+departure_chi <-
+  chisq_test(case_by_npa2)$statistic - prop_trend_test(case_by_npa2)$statistic
+
+#--- Test for departure from linear trend
+pchisq(departure_chi, 2)
+```
