@@ -1,0 +1,133 @@
+---
+title: "R for SME 9: Logistic regression (basics)"
+author: Andrea Mazzella & Daniel J Carter
+---
+
+This R notebook covers Practical 9 on logistic regression for SME in 2022. It covers the basics of carrying out logistic regression. Before you analyse the data, make sure you also explore the data to get familiar with it.
+
+
+```{r}
+#--- Load libraries
+library(haven)
+library(epiDisplay)
+library(magrittr)
+library(tidyverse)
+
+#--- Import data
+mortality <- read_dta("./mortality17.dta") %>% as_factor(.)
+```
+
+## Data analysis
+
+First, we want to examine the unadjusted association between the outcome variable (binary; hence logistic regression) and the exposure variable.
+
+Outcome variable: died (3-year-mortality; binary, 0/1)
+Exposure variable: vimp (visual impairment; binary, "Normal" / "Visually impaired")
+
+> Q3. Examine the association between visual impairment and death
+
+```{r}
+# Frequency table with %
+mortality %$% tabpct(vimp, died, percent = "row", graph = F)
+
+# OR
+mortality %$% cc(vimp, died, graph = F)
+```
+
+> Q4. Perform a logistic regression to examine the association between visual impairment and death.
+
+To perform a logistic regression (and other models within the generalised linear modelling framework) in R, we use the GLM command. This involves specifying a formula: on the left-hand side (LHS) of the formula should be the outcome and on the right-hand side (RHS) the exposure and covariates. So we read the formula below as 'predict the probability of the outcome died from the exposure vimp'. 
+
+The '.' is required with the pipe because customarily, the pipe takes whats on the left and puts it into the first argument of the right. The first argument to glm() is the model formula and the second is the data, so the fullstop tells R to put the object from the left of the pipe in the _second_ argument instead.
+
+The family argument tells R that you would like a logistic regression and not some other kind of model (that you will see later in the course), assuming a binomial distribution for the binary outcome. The logistic.display command gives us 95% CIs and effect estimates in a clear way.
+
+
+```{r Logistic regression of a binary exposure}
+#--- Logistic regression
+mod_vimp <- mortality %>% glm(died ~ vimp, data = ., family = binomial())
+
+#--- Display the regression in a more user-friendly way
+logistic.display(mod_vimp)
+```
+
+From this combination of commands, we can get:
+
+- an OR with 95% CI for outcome in exposed vs unexposed
+- p-value for a Wald test (null hypothesis: the vimp coefficient = 0) 
+- p-value for an LR test (null hypothesis: the model fits better than the null model)
+- the final log-likelihood - (no intermediate iterations shown in R, unlike in Stata)
+- the number of observations
+- the Akaike Information Criterion, which is a measure of model fit that combines the log-likelihood with information about the number of parameters in the model
+
+> Q8. Explore the association between microfilaria and death with cross-tabulation:
+
+- Exposure: microfilarial load/mg - mfgrp (categorical variable: Uninfected, <10, 10-49, 50, NA)
+```{r}
+#--- Summary of categorical data
+mortality %$% summary(mfgrp)
+mortality %$% tabpct(mfgrp, died, percent = "row", graph = F)
+```
+
+>Q9.
+
+Now explore the same with logistic regression. Unlike Stata, R understands that the mfgrp variable is categorical (this is indicated by the factor type), so there is no need to use a prefix like 'i.' to indicate this. Check you can interpret the ORs and probabilities from this analysis.
+
+```{r}
+#--- Check the type of the categorical exposure is a factor
+mortality %$% class(mfgrp)
+
+#--- Run and display the regression
+mortality %>% glm(died ~ mfgrp, data = ., family = binomial()) %>% logistic.display(.)
+```
+
+> Q13.
+
+To perform a likelihood ratio test (LRT), you need to use lrtest() to divide the log likelihood from a logistic regression model *with* the variable of interest (that you have already defined) and the log likelihood from a logistic regression model *without* the variable - that you need to calculate now.
+
+Caution: mfgrp has missing data, so this new model will have more observations than the first - and the LRT test can only work when the two models have the same number of observations. So you need to ensure that the samples for the two models are the same - we do this by using the drop_na() command, which removes rows where the specified variable is NA. 
+
+```{r}
+#--- Check for missing values
+mortality %$% summary(mfgrp)
+
+#--- Logistic regression model without the covariate (removing values with missing mfgrp)
+mod_0 <- mortality %>% 
+  drop_na(mfgrp) %>% 
+  glm(died ~ 1, data = ., family = binomial())
+
+#--- Logistic regression model with the covariate (missing values automatically removed)
+mod_1 <- mortality %>% 
+  glm(died ~ mfgrp, data = ., family = binomial())
+
+# Likelihood ratio test (LRT)
+lrtest(mod_0, mod_1)
+```
+
+Note that the p-value from this lrtest() command is the same p-value given by the P(LR-test) output from the logistic.display() command. The null hypothesis is that the log-likelihood of the two models is the same (interpreted as the model fit being the same) and this quantifies the strength of evidence that the log-likelihood is further maximised by including the covariate of interest.
+
+> Q14. Run a logistic regression model to check the association of age and death.
+
+Exposure variable: agegrp (categorical: 15-34, 35-54, 55-64, 65+)
+
+```{r}
+#--- Check for missing values (none!)
+mortality %$% summary(agegrp)
+
+#--- Logistic regression model for age
+mortality %>% 
+  glm(died ~ agegrp, data = ., family = binomial()) %>% 
+  logistic.display(.)
+```
+
+Now let's assess the relationship between visual impairment and death controlling for age as a confounder. (Why would this model NOT represent the relationship between age and death controlling for visual impairment as a confounder? Hint: nothing to do with the code...)
+
+```{r}
+# Logistic regression model with exposure and covariate
+mortality %>%
+  glm(died ~ vimp + agegrp, data = ., family = binomial()) %>% 
+  logistic.display(.)
+```
+The key coefficient here to interpret is the top adjusted OR for the vimp coefficient. This tells us that the odds of death are 2.2 times higher in people who are visually impaired compared to people who are not (avoiding the dataset's stigmatising language of 'normal'!) after adjusting for age. This is compared to not adjusting for age, where the crude OR is 5.57. So we conclude there is likely to be strong confounding by age. There is strong evidence against the null hypothesis that the vimp coefficient is equal to 0, and there is strong evidence against the null hypothesis that the model without age fits equally well as the model with age, so we conclude a better model fit after adjustment for age group. 
+
+Note that we are implicitly here not interested in interpreting directly the coefficients for age because our (implicitly causal) question is about visual impairment and not about age, which is just a confounding factor. Interpreting the age coefficients here would make no sense since visual impairment cannot confound the relationship between age and death. Interpreting the age coefficient as meaningful in and of itself is meaningless, and this is known as the (surprisingly common!) Table 2 fallacy.
