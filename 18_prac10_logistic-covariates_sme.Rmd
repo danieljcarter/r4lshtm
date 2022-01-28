@@ -1,0 +1,214 @@
+---
+title: "R for SME 10: Logistic regression (covariates)"
+author: Andrea Mazzella & Daniel J Carter
+output: html_notebook
+---
+
+This Notebook extends the previous practical on logistic regression by extending it to the context of covariate adjustment.
+
+# Part 1: Mortality
+
+The usual preliminaries:
+
+```{r}
+#--- Load libraries
+library(haven)
+library(epiDisplay)
+library(magrittr)
+library(tidyverse)
+
+#--- Turn off scientific notation
+options(scipen=999)
+```
+
+```{r Import data}
+#--- Read in data
+mortality <- read_dta("./mortality17.dta") %>% as_factor(.)
+```
+
+```{r Explore data}
+#--- Explore data
+glimpse(mortality)
+summary(mortality)
+View(mortality)
+```
+
+## Data analysis
+
+> Q1. Is onchocercal infection associated with death?
+
+```{r}
+#--- Cross-tabulate "died" and "mfpos"
+mortality %$% tabpct(mfpos, died, percent = "row", graph = F)
+
+#--- Logistic regression
+mortality %>% 
+  glm(died ~ mfpos, data = ., family = binomial()) %>%
+  logistic.display()
+```
+We see that the percentage who died is greater in the group with onchocercal infection and that the crude OR for death in infected vs non-infected is 1.63 (1.08-2.48). There is strong evidence against the null hypothesis of no association.
+
+> Q2. Is age a possible confounder?
+
+Is age associated with outcome and exposure? We already know that age is going to be related to death, so we just check the exposure.
+
+```{r}
+#--- Cross-tabulate mfpos against agegrp
+mortality %$% tabpct(agegrp, mfpos, percent = "col", graph = F)
+
+```
+
+Indeed we see that the distribution of mfpos varies by age, suggesting it might be a potential confounder or effect modifier.
+
+> Q3. We can generate some stratified tables to better understand whether we need to age adjust (confounding) or treat age as an effect modifier.
+
+```{r}
+#--- Stratified 2x2 tables
+mortality %>%
+  filter(agegrp == "15-34") %$% 
+  cc(died, mfpos, graph = F) # OR: 2.31
+
+mortality %>%
+  filter(agegrp == "35-54") %$% 
+  cc(died, mfpos, graph = F) # OR: 1.33
+
+mortality %>%
+  filter(agegrp == "55-64") %$% 
+  cc(died, mfpos, graph = F) # OR: 1.77
+
+mortality %>%
+  filter(agegrp == "65+") %$% 
+  cc(died, mfpos, graph = F) # OR: 0.93
+
+#--- Mantel-Haenszel OR and chi2 test
+mortality %$% 
+  mhor(died, mfpos, agegrp, graph = F)
+```
+
+We see some differences in OR across strata of age, but the confidence interval of these estimates overlap, so we conclude that it is unlikely that age group is an effect modifier. There is no evidence against the null hypothesis of homogenous (similar) ORs (p = 0.527). Recall that the definition of an effect modifier is a variable that causes the relationship between exposure and outcome to vary.
+
+Recall that the definition of a confounder is a common cause of the outcome and exposure: it is clear that increasing age is a cause of death, and from our tabulations, also associated with infection.The MH aOR for death in the infected vs non-infected, accounting for age, is 1.50 (0.98-2.30); compared with crude OR of 1.63 (1.08-2.48), it appears that age group is likely a confounder - adjusting for age has possibly changed our interpretation of the data since the CIs have shifted to cover the null. Correspondingly, now that we have adjusted for age, the p-value for the chi2 test has increased to 0.06 and we have less strength of evidence against the null hypothesis of no association between exposure and outcome.
+
+
+
+> Q4 & 5. We now investigate the same associations but with logistic regression and interpret them.
+
+```{r}
+#--- Logistic regression with a confounder
+mortality %>% glm(died ~ mfpos + agegrp, data = ., family = binomial()) %>% 
+  logistic.display()
+```
+
+An interpretation might be: There was some evidence that onchocercal infection was associated with increased risk of death (unadjusted OR=1.63, 95% c.i. 1.08, 2.48; P=0.02). Although controlling for age reduced the strength of this association somewhat (adjusted OR= 1.51, 95% c.i. 0.98, 2.31), suggesting some confounding by age, there was still some evidence against the null hypothesis of no association between onchocercal infection and death (p = 0.06). 
+
+Note that the direction of effect was mentioned in the interpretation, and also note that language carefully did not suggest that confounding was examined via a statistical test.
+
+> Q6. Now run a more complex model including visual impairment as the exposure and age and onchocercal infection as possible confounders.
+
+```{r}
+#--- Logistic regression with two confounders
+mortality %>% glm(died ~ vimp + mfpos + agegrp, data = ., family = binomial()) %>% 
+  logistic.display()
+```
+
+The aOR for visual impairment can be interpreted as: controlling for infection and age group, the odds of death are 2.28 times greater in people who are visually impaired versus people who are not visually impaired, with 95% confidence interval 1.44-3.58. There is very strong evidence against the null hypothesis of no association between visual impairment and death (Wald's p < 0.001).
+
+> Q7-9: Likelihood ratio tests
+
+Note that Q7 asks you to look at the OR associated with onchocercal infection using the same model. This is actually a trick question! The aOR for mfpos of 1.46 is uninterpretable: we have adjusted for visual impairment in this model, but visual impairment rests on the causal pathway between onchocerciasis and death, or _mediates_ the relationship. Q8 & Q9 are similarly unintepretable - there is no reason to test the difference between the model with and without visual impairment as we should not be adjusting for visual impairment when looking at the relationship between infection and death. Similarly, if we are looking at the relationship between age and death, we should not be adjusting for any confounders. 
+
+To illustrate the likelihood ratio test, we examine models with and without adjustment for age to examine the relationship between visual impairment and odds of death. We wish to know about the relationship of age with the outcome.
+
+In order to carry out this test, we fit a simpler model with only adjustment for the infection confounder, and a more complex model adjusting for both covariates. The null hypothesis of the likelihood ratio test is that the estimated log-likelihood of the simpler model is the same as that of the more complex model. If age is not associated with the outcome, it will not increase the estimated log-likelihood. 
+
+Note that we cannot just use the Wald tests for age group. Since age is a categorical variable, the model specifies three parameters for age, one for each group different from the baseline. The LRT is able to test all of these parameters above.
+
+```{r}
+#--- Create the more complex model with all confounders
+mod_complex <- glm(died ~ vimp + mfpos + agegrp, data = mortality, family = binomial())
+
+#--- Create the less complex model adjusting only for infection
+mod_simple <- glm(died ~ vimp + mfpos, data = mortality, family = binomial())
+
+#--- Likelihood ratio test
+lrtest(mod_complex, mod_simple)
+
+```
+- The LRT gives us p < 0.001. Therefore, there is very strong evidence for an association between age and death, other than through visual impairment and infection. This LR test is given in the output to Q6.
+
+
+
+# Part 2: Mwanza
+
+Here, instead of splitting up the analysis question by question, I demonstrate the complete steps in the analysis in one chunk of code to reflect the approach you might take to answering other scientific questions.
+
+Here, the question of interest is whether education (exposure) is associated with HIV infection (outcome). Implicitly, we are asking a causal question about the impact of education on HIV - confounding is only relevant when we are implicitly trying to estimate a causal effect because it muddles our estimation of said causal effect.
+
+Examine the causal diagram (DAG; directed acyclic graph) generated by the code below:
+
+```{r}
+#--- Load ggdag library - remember to install it with install.packages() if needed.
+library(ggdag)
+
+#--- Nice plotting theme
+theme_set(theme_dag())
+
+#--- Specify relationships
+mwanza_dag <- dagify(HIV ~ Educ + Rel,
+       Educ ~ Rel,
+       exposure = "Educ",
+       outcome = "HIV")
+
+#--- Plot relationships
+ggdag(mwanza_dag)
+```
+
+In this diagram, arrows represent causal effects. We are interested in estimating the magnitude of the arrow from Education to HIV Infection. But notice there is another path from Education to HIV Infection: Educ <- Rel -> HIV. We wish to block this so-called 'backdoor' path by adjusting for religion, and this is what we do below:
+
+```{r}
+#--- Import the dataset
+mwanza <- read_dta("./mwanza17.dta")
+
+#--- General familiarisation
+View(mwanza)
+glimpse(mwanza)
+summary(mwanza)
+
+#--- Modify the education variable with mutate() and case_when()
+mwanza %$% table(ed)
+
+mwanza <- mwanza %>%
+  mutate(ed2 = as.factor(
+    case_when(
+      ed == 1 ~ "No education",
+      ed == 2 ~ "Some formal education",
+      ed == 3 ~ "Some formal education",
+      ed == 4 ~ "Some formal education"
+    )
+  ))
+
+mwanza %$% table(ed, ed2) # check!
+
+#--- 2x2 table with crude OR of 2.42
+mwanza %$% cc(case, ed2, graph = F)
+
+#--- Replace rel "9" with "NA" because of missing values (always explore the data...)
+mwanza$rel <- na_if(mwanza$rel, 9)
+
+#--- Mantel-Haenszel aOR: 1.91, strong evidence against the null of no association (p < 0.001)
+mwanza %$% mhor(case, ed2, rel, graph = F)
+
+#--- Logistic regression aOR: 2.02, strong evidence against the null of no association (p < 0.001)
+mod_adj <- glm(case ~ ed2 + rel, data = mwanza, family = binomial())
+logistic.display(mod_adj)
+
+#--- Create an unadjusted model excluding the rows with missing values in the religion variable for comparability
+mod_unadj <- mwanza %>%
+  drop_na(rel) %>%
+  glm(case ~ ed2,data = ., family = binomial())
+
+#--- LRT: strong evidence against null hypothesis that religion unassociated with outcome
+lrtest(mod_adj, mod_unadj)
+```
+
+Interpretation: Controlling for religion reduced the estimate of the odds ratio for education from 2.42 (unadjusted) to 2.02 (adjusted), indicating important confounding by religion. After controlling for religion there remained strong evidence that some formal education was associated with increased odds of HIV infection (OR = 2.02, 95% CIs: 1.39, 2.94).
