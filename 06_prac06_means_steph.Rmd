@@ -23,7 +23,7 @@ options(scipen = 10, digits=3)
 theme_set(theme_bw()) 
 
 #--- Read in the bab9 data file
-bab9 <- read.dta("./BAB9.dta", convert.factors = T) 
+# bab9 <- read.dta("./BAB9.dta", convert.factors = T) 
 ```
 
 ## Descriptive Statistics
