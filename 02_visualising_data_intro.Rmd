@@ -17,8 +17,9 @@ The first thing we are going to do is make sure we have the packages we need ins
 There is an ongoing 'debate' between whether one should use the tidyverse for data analysis or stick with the functions that come natively with R. I have written these notes using the tidyverse suite as I am generally in favor of not doing excess work if someone has done that work previously! Packages greatly extend the functionality of R, though the downfall is that sometimes they change (and your old code may have to be updated - though this is a rare occurrence!). I also find the tidyverse simpler for pedagogical purposes so you can think about the analysis, not about the specifics of how R works. As you become a more advanced user, you will need to understand more about Base R - and then you'll come to your own conclusion!
 
 ```{r}
-#--- Load libraries
+#--- Load packages
 library(tidyverse)
+library(psych)
 ```
 
 To start investigating our question, we need a dataset. Most data comes to you in a csv (comma separated values) file from Excel - we will talk about other formats later. This dataset, sdg.csv, should've come with the downloaded zip file - make sure that it is located in the same folder as this R file, else the code will not work.
@@ -31,7 +32,7 @@ We use a simple function to read in data: read_csv().
 sdg <- read_csv("./sdg.csv")
 
 #--- This will only work on my computer
-sdg <- read_csv("E:/LSHTM/Teaching/r4epi/sdg.csv")
+#sdg <- read_csv("E:/LSHTM/Teaching/r4epi/sdg.csv")
 
 #--- Get working directory
 getwd()
