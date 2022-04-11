@@ -1,5 +1,5 @@
 
-# Comparing Two Means: Practical 9
+# Comparing Two Means
 
 You have previously undertaken a pen and paper practical where you calculated confidence intervals for the mean of a continuous (or quantitative) variable. You have also conducted a t-test and been introduced to the concept of analysis of variance (ANOVA). We will now carry out these tasks in R.
 
@@ -160,7 +160,7 @@ bab9 %$% describeBy(bweight, sex)
 ```
 
 
-> Exercise 9.1: Descriptively, do the means and standard deviations differ by gender?
+> Exercise 1.1: Descriptively, do the means and standard deviations differ by gender?
 
 
 Recall that if working in the provided R Notebooks, you can write the answer to this question in the blank space directly beneath the code chunk relevant for answering it.
@@ -175,7 +175,7 @@ bab9 %>% ggplot(aes(x = bweight, fill = sex)) + geom_histogram(bins = 50)
 ```
 
 
-> Exercise 9.2: Are the distributions roughly normal? Is the spread of values roughly similar in each group? Are the sample sizes still reasonably large? 
+> Exercise 1.2: Are the distributions roughly normal? Is the spread of values roughly similar in each group? Are the sample sizes still reasonably large? 
 
 
 ## Comparing Two Means
@@ -202,7 +202,7 @@ bab9 %$% t.test(bweight, mu = 3300, var.equal = T)
 When reporting the results of the test, it is useful to specify the null hypothesis. In this case, the null hypothesis is that the mean population birthweight is equal to 3300. The alternative hypothesis is thus that the mean population birthweight is not equal to 3300.
 
 
-> Exercise 9.3: What do you conclude from this test?
+> Exercise 1.3: What do you conclude from this test?
 
 
 ## Two-sample t-test
@@ -217,7 +217,7 @@ bab9 %$% t.test(bweight ~ sex, var.equal = T)
 ```
 
 
-> Exercise 9.4: What two means are being compared? What is the null hypothesis of this test? What is the alternative hypothesis? What do you conclude about the strength of evidence against the null hypothesis? 
+> Exercise 1.4: What two means are being compared? What is the null hypothesis of this test? What is the alternative hypothesis? What do you conclude about the strength of evidence against the null hypothesis? 
 
 
 ---
@@ -228,7 +228,7 @@ bab9 %$% var.test(bweight ~ sex)
 ```
 
 
-> Exercise 9.5: What is the null hypothesis of the test of equality of variances? What is the alternative hypothesis? What do you conclude about the strength of evidence against the null hypothesis? Was the assumption of equal variance in boys and girls reasonable? 
+> Exercise 1.5: What is the null hypothesis of the test of equality of variances? What is the alternative hypothesis? What do you conclude about the strength of evidence against the null hypothesis? Was the assumption of equal variance in boys and girls reasonable? 
 
 
 ## Analysis of Variance
@@ -264,7 +264,7 @@ summary(anova2)
 Note that since there are four categories in matagegp, we get three degrees of freedom.
 
 
-> Exercise 9.6: From the results of this test:
+> Exercise 1.6: From the results of this test:
 >
 > * a) What is the null hypothesis being tested in the analysis of variance?
 > * b) What is the result of the test?
@@ -344,4 +344,4 @@ nonpara.l %$% wilcox.test(skinfold ~ observer, paired = T)
 ```
 
 
-> Exercise 9.7: Run the equivalent t test using the paired = T option. What do you conclude?
+> Exercise 1.7: Run the equivalent t test using the paired = T option. What do you conclude?

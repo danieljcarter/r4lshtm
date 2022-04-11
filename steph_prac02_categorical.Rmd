@@ -50,11 +50,11 @@ bab9 %$% tabpct(ht, lbw, graph = F)
 ```
 
 
-> Exercise 10.1: From the cc() table, how many low birthweight babies were born to women with hypertension? How many low birthweight babies were born to women with no hypertension?
+> Exercise 2.1: From the cc() table, how many low birthweight babies were born to women with hypertension? How many low birthweight babies were born to women with no hypertension?
 
-> Exercise 10.2: From the tabpct() table, what proportion of babies born to women who were hypertensive were of low birthweight? How does this compare with the proportion of low birthweight babies born to women who were not hypertensive?
+> Exercise 2.2: From the tabpct() table, what proportion of babies born to women who were hypertensive were of low birthweight? How does this compare with the proportion of low birthweight babies born to women who were not hypertensive?
 
-> Exercise 10.3: From the cc() table, what is your interpretation of the chi-squared test?
+> Exercise 2.3: From the cc() table, what is your interpretation of the chi-squared test?
 
 
 ## Z-test for proportions
@@ -75,9 +75,9 @@ sqrt(ztest$statistic)
 ```
 
 
-> Exercise 10.4: What is your interpretation of this result?
+> Exercise 2.4: What is your interpretation of this result?
 
-> Exercise 10.5: Check the relationship between the z and the chi-squared values obtained.
+> Exercise 2.5: Check the relationship between the z and the chi-squared values obtained.
 
 ## Trends in proportions
 
@@ -120,7 +120,7 @@ We read in the bab (original) dataset, replicating the command given in the firs
 We can also use a nested ifelse approach - if the bweight variable is less than 2500, give it the value 1, else continue to the next statement - we repeat this process. In general, _case_when()_ is more clear than using _ifelse()_ as it explicitly sets out each new level and generates an NA when a variable does not meet any conditions, while _ifelse()_ can lead to every value not specified being lumped into the final _else_ condition. In this case, we have only three possible categories and thus the ifelse approach is relatively straightforward, but nesting many statements can get rapidly confusing.
 
 
-> Exercise 10.7: What percentage of birthweights were 3000g or more?
+> Exercise 2.7: What percentage of birthweights were 3000g or more?
 
 
 ```{r}
@@ -144,7 +144,7 @@ summary(bab$lbw3)
 Now we conduct some further analyses.
 
 
-> Exercise 10.8: Analyse whether there is any association between sex of infant and birthweight (using lbw3).
+> Exercise 2.8: Analyse whether there is any association between sex of infant and birthweight (using lbw3).
 How many degrees of freedom is the chi-square test based on?
 
 
@@ -156,7 +156,7 @@ bab %$% cc(sex, lbw3, graph = F)
 Now we categorise maternal age into four groups (<30, 30-34, 35-39, 40+) to investigate the relationship with hypertension. We could do this by using three nested ifelse statements, or by using _case_when()_ but we demonstrate a straightforward way to categorise the continuous variable using the _cut()_ function.
 
 
-> Exercise 10.9: Is there any evidence of a linear association between hypertension and maternal age?
+> Exercise 2.9: Is there any evidence of a linear association between hypertension and maternal age?
 
 ```{r}
 #--- Create the new variable and extract a summary
@@ -174,9 +174,9 @@ bab %$% cc(ht, matagegp, graph = F)
 We create a new variable that codes which quarter of gestation age each baby falls into. This uses exactly the same code as presented above and the same ntile() function. 
 
 
-> Exercise 10.10: Find the values of gestational age which define the quartiles.
+> Exercise 2.10: Find the values of gestational age which define the quartiles.
 
-> Exercise 10.11: What proportion of infants in the lowest quarter of gestational age were males?
+> Exercise 2.11: What proportion of infants in the lowest quarter of gestational age were males?
 
 ```{r}
 #--- Get the quintiles
