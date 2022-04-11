@@ -21,6 +21,6 @@ The mapping of sessions is as follows:
 |         | prac03_logistic          	|           	|       	|
 |         | prac04_logistic-covariates          	|           	|       	|
 |--------	|----------	|-----------	|-------	|
-| ASME    | prac01_classical          	|           	|       	|
+| ASME    | prac01_classical          	|   Session No. 1        	|  Self-directed Exercises     	|
 
 
