@@ -4,6 +4,19 @@ Welcome to R for LSHTM, 2022 edition. This repository collates all of the practi
 
 This material is constantly being updated and should be complete by the end of the 2021-2022 academic year.
 
-The ASME Practicals are:
+| Course 	| Filename 	| Session Number 	| Session Title 	|
+|--------	|----------	|-----------	|-------	|
+| STEPH   | prac01_means          	|           	|       	|
+|        	| prac02_categorical         	|           	|       	|
+|        	| prac03_strat2x2         	|           	|       	|
+|        	| prac04_linreg         	|           	|       	|
+|        	| prac05_extlinreg         	|           	|       	|
+|--------	|----------	|-----------	|-------	|
+| SME     | prac01_survival          	|           	|       	|
+|         | prac02_case-control          	|           	|       	|
+|         | prac03_logistic          	|           	|       	|
+|         | prac04_logistic-covariates          	|           	|       	|
+|--------	|----------	|-----------	|-------	|
+| ASME    | prac01_classical          	|           	|       	|
 
-- asme_prac01.Rmd -- Session 1: Self-directed Exercises
+
