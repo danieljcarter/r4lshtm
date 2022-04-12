@@ -1,0 +1,162 @@
+---
+title: "3: Matched case-control studies and conditional logistic regression"
+subtitle: "R 4 ASME"
+author: Julian Matthewman & Daniel J Carter
+---
+
+-------------------------------------------------------------------------------
+
+## Contents
+
+Using conditional logistic regression to analyse matched case-control studies.
+
+
+-------------------------------------------------------------------------------
+
+## Packages and data management
+
+```{r message=FALSE, warning=FALSE}
+# Load packages
+library(haven)
+library(survival)
+library(magrittr)
+library(epiDisplay)
+library(sjlabelled)
+library(tidyverse)
+
+# Limit significant digits to 2, reduce scientific notation
+options(digits = 2, scipen = 9)
+```
+
+```{r}
+# Data import
+diabraz <- read_dta("diabraz17.dta") %>% sjlabelled::as_factor()
+diabraz2 <- read_dta("diabraz217.dta") %>% sjlabelled::as_factor()
+
+# Preview
+diabraz
+diabraz2
+```
+
+Some useful info from the Stata `.hlp` file:
+
+* BRAZILIAN CASE-CONTROL STUDY OF RISK FACTORS FOR INFANT DEATH FROM DIARRHOEA
+* case       1=case, 0=control
+* milkgp     1=breast only, 2=breast+other, 3=other only
+* bf         1=breastfed, 2=not breastfed
+* water      Piped water supply: 1=in house, 2=in plot, 3=none
+* wat2       1=in house/plot 2=none
+* agegp      Age group (months): 1=0-1, 2=2-3, 3=4-5, 4=6-8, 5=9-11
+* agegp2     1=0-2, 2=3-5, 3=6-11
+* milkgp     1=breast only, 2=breast+other, 3=other only
+
+You might want to label your variables with these value labels for clarity.
+
+-------------------------------------------------------------------------------
+
+# Question 1
+
+### Analyse the association between breast feeding (bf) and diarrhoea mortality.
+
+We start off by cross-tabulating our outcome (case) and our exposure (bf), looking at row percentages.
+
+```{r}
+diabraz %$% tabpct(case, bf, percent = "row", graph = F)
+```
+
+Then we estimate the odds ratio, calculate a confidence interval for the OR, and test the null hypothesis of no association. This will give us a long list of strata (since each set is one stratum) and the MH adjusted OR as the last entry in the list.
+
+```{r}
+diabraz %$% epiDisplay::mhor(case, bf, pair)
+```
+
+Now let's try using conditional logistic regression. This should give us a similar OR as the MH method above. The case variable needs to be numeric for this command to run, so we do that conversion first. 
+
+Do not worry about the warning given by this regression - it is because clogit() runs a Cox model in the background (the two are actually equivalent!), and the Cox model expects survival time as the dependent variable - it does not impact the model output. This has been suppressed in other chunks.
+
+
+```{r}
+diabraz <- diabraz %>% mutate(case.n = as.numeric(case)-1)
+
+clogit(case.n ~ bf + strata(set), data = diabraz) %>% clogistic.display()
+```
+    
+-------------------------------------------------------------------------------
+
+# Question 2
+
+### i) Were children with a piped water supply to the house at lower risk than those with a supply to the plot?
+
+Now using the full dataset (diabraz2). Just to remind you, water has 3 levels (1=in house, 2=in plot, 3=none) and wat2 has 2 levels (1=in house/plot 2=none). So if you are using the variable water to fit your model and you only see 1 OR in the output something is wrong! This is because all of the data is coded as integers - make sure you've made the conversion using as_factor() where appropriate.
+
+```{r, warning = F}
+diabraz2 <- diabraz2 %>% mutate(case.n = as.numeric(case)-1)
+
+model1 <- clogit(case.n ~ water + strata(set), data = diabraz2)
+clogistic.display(model1)
+```
+
+We could also answer this question comparing two different models using a likelihood ratio test. Fit a second model and compare them using the `lrtest()` function:
+
+```{r, warning = F}
+model2 <- clogit(case.n ~ wat2 + strata(set), data = diabraz2)
+clogistic.display(model2)
+
+epiDisplay::lrtest(model1, model2)
+```
+
+Alternatively, the analysis can be performed by restricting to those who had piped water (ie. excluding group 3). Try doing this using subsetting or filtering the data using `filter()`. If you do use `filter()` be aware that filtering out values of a certain level will not drop that level, i.e.: you will end up with an unused level. This can cause problems; using `droplevels()` gets rid of unused levels. Note that because in filtered there are now only 2 levels, the continuous vs categorical specification does not matter - the coefficient will represent the change in odds of being a case moving from group 1 to group 2 in both cases.
+
+```{r, warning = F}
+# Create a dataset excluding those with piped water
+filtered <- filter(diabraz2, water == 1 | water == 2) %>% droplevels()
+
+# Perform conditional logistic regression
+model3 <- clogit(case.n ~ water + strata(set), data = filtered)
+clogistic.display(model3)
+```
+
+
+### ii) Did the effect of water supply (on diarrhoea) vary with age of the child?
+
+Here we need might want to work with interaction terms if the effect of water differs by level of age group. We use `*` insted of `+` between two variables to allow for interaction. 
+
+```{r, warning = F}
+model4 <- clogit(case.n ~ water + agegp2 + strata(set), data = diabraz2)
+clogistic.display(model4)
+
+model5 <- clogit(case.n ~ water * agegp2 + strata(set), data = diabraz2)
+clogistic.display(model5)
+
+epiDisplay::lrtest(model4, model5)
+
+```
+
+-------------------------------------------------------------------------------
+
+# Question 3
+
+### Examine the effects of infant feeding practices on the risk of death from diarrhoea
+
+Using the full dataset (DIABRAZ2.DTA), use the variable milkgp to examine the effects of infant feeding practices on the risk of death from diarrhoea. Start with getting the crude OR, then explore the confounding effect of age. Decide on which of the age variables (agegp or agegp) is a better fit. Then explore the effect of other potential confounders such as sex, mother's education ... 
+
+Omitted here are descriptive analyses! Make sure you know about the data you are modelling before you model it.
+
+```{r, warning = F}
+# crude
+clogit(case.n ~ milkgp + strata(set), data = diabraz2) %>% clogistic.display()
+
+# adjusted for sex
+clogit(case.n ~ milkgp + sex + strata(set), data = diabraz2) %>% clogistic.display()
+
+# adjusted for agegp2
+clogit(case.n ~ milkgp + agegp2 + strata(set), data = diabraz2) %>% clogistic.display()
+
+# adjusted for age (more categories)
+clogit(case.n ~ milkgp + agegp + strata(set), data = diabraz2) %>% clogistic.display()
+
+# adjusted for age and mothers education
+clogit(case.n ~ milkgp + agegp + meduc + strata(set), data = diabraz2) %>% clogistic.display()
+```
+
+We still see a clear impact of feeding practices on risk of diarrhoea even after adjustment -- try drawing a possible causal diagram for this question, and then fitting another set of models.
