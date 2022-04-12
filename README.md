@@ -4,9 +4,7 @@ Welcome to R for LSHTM, 2022 edition.
 
 This repository collates all of the practical sessions from the statistical course sequence at LSHTM: STEPH, SME, and ASME. Datasets are presently not confirmed to be publicly available, but are available on Moodle for LSHTM staff and students - I am working on clarifying dataset availability or replacing with a simulated dataset for those based outside of LSHTM.
 
-
-
-This material is constantly being updated and should be complete by the end of the 2021-2022 academic year.
+This material is constantly being updated and should be complete by the end of the 2021-2022 academic year. If you are working with these files and notice any changes that need to be made, or if you wish to add R files for any other courses at LSHTM, please do [make a pull request](https://opensource.com/article/19/7/create-pull-request-github).
 
 The mapping of sessions is as follows:
 
@@ -26,5 +24,9 @@ The mapping of sessions is as follows:
 |         | prac04_logistic-covariates |           	      |       	|
 |--------	|----------	                 |-----------	      |-------	|
 | ASME    | prac01_classical           |   Session 1      |  Self-directed Exercises     	|
+|         | prac03_matched             |   Session 3      |  Matched case-control studies     	|
+
+
+
 
 
