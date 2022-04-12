@@ -1,0 +1,215 @@
+
+# Mediation & Confounding
+
+This section of the practical will take you through the initial analyses a social epidemiologist might take to determine if socioeconomic position is associated with HIV risk in young Tanzanian women. The goal of this practical is not to focus on the R or Stata code, but instead to understand conceptually what is happening and be able to interpret the output critically. 
+
+This R Notebook combines both code (in chunks in light grey) with instructions on how to use the code. Exercises that require your attention are flagged with a '>' and should appear in a different colour on your machine.
+
+This initial session will consolidate your understanding of mediation and confounding. In this session we will seek to get to know the data, calculate some basic prevalences, describe the association between educational attainment and HIV, and adjust for a potential confounder.
+
+There is no explicit paper associated with this practical, but some papers of interest are listed in the session outline.
+
+In this practical, we will use data from the AIDS indicator survey carried out in Tanzania in 2007. The data includes only adolescent girls and young women aged 15-24 years of age who were residing in rural areas. The dataset contains one record for each of the 2762 young women included in the survey with information on their HIV serostatus.
+
+Step 1 is to ensure that your R Notebook and your data are in the correct place. As long as the R Notebook and the dataset socepi_tz.dta (available from Moodle) are in the same folder on your computer, the code below will work.
+
+In R, not every tool we need for analysis is automatically included. We need to rely on user-built packages to extend our analysis, which we install with the install.packages() command. We need to do this only once. We then tell R to use those installed packages by loading the library associated with the package with the library() command. 
+
+To run code in RStudio, you place your cursor on the line and press Ctrl-Enter, or if you want to run the whole chunk, mouse click the green triangle at the top right corner of the code chunk (in grey).
+
+The # indicates a comment, so R knows not to run that code. Removing the # will make the code active, as you may have to do with the install.packages() command below.
+
+
+```{r medconf_setup, include = F}
+# install.packages("haven")
+# install.packages("epiDisplay")
+# install.packages("magrittr")
+# install.packages("tidyverse")
+
+library(haven)
+library(epiDisplay)
+library(magrittr)
+library(tidyverse)
+
+#--- Turn off scientific notation and round everything to 3 decimal places
+options(scipen = 999, digits = 3)
+
+#--- Put all plots in black and white
+theme_set(theme_bw())
+
+```
+
+Once you have loaded in the libraries, we are going to read in the data. You should see it appear in the 'Environment' pane in the top right hand corner of RStudio as a dataset called 'tz'. You can click on the dataset in the Environment pane and it will open in a new tab. Browse through the data now. 
+
+```{r data_medconf}
+#--- Read in data
+tz <- read_csv("./socepi_tz.csv")
+
+#--- Convert characters to factor (categorical) variables
+tz <- tz %>% mutate_if(is.character, as.factor) 
+
+```
+
+## Descriptive Statistics
+
+Let's do a quick summary of all of the variables. In R, we use the summary() command or the summ() command from the epiDisplay package where Stata would use _summ_ or _tab_. A custom function is also provided that provides neat output.
+
+The variables in the dataset are as follows:
+
+serostat: HIV serostatus
+water: Type of water supply
+toilet: Type of toilet facility
+electricity: Electricity supply to home?
+radio: Household owns a radio?
+tv: Household owns a TV
+fridge: Household owns a refrigerator
+bike: Household owns a bicycle
+car: Household owns a car
+floor: Type of floor in home
+wall: Type of wall in home
+roof: Type of roof in home
+age: Age
+educat: Education level
+married: marital status
+partners: lifetime number of reported sexual partners
+
+Use the code below to answer the following:
+
+> What is the age range of the population? What about the average age? Have a look at the below graph that describes the age range. 
+
+The relevant commands for each of the variables are laid out. Take a look at their summaries. Make a rough table of your findings, perhaps including percentages for each variable. R has a built in calculator, so if you wanted to manually calculate a percentage, you can do that in the console pane on the lower left. 
+
+> Note any differences in variables that you think might be particularly important. Summarise verbally any patterns that you observe. You may wish to 
+
+Make sure you intuit what each variable is measuring - think about whether it is a characteristic of the individual woman or of her household. 
+
+```{r desc_medconf, warnings = F, message = F}
+#--- Drop any factor levels that have no observations
+tz <- droplevels(tz)
+
+#--- Summaries of Age
+summary(tz$age)
+ggplot(tz, aes(x = as.factor(age))) +
+  geom_bar()
+
+#--- Load custom summary function
+tblFun <- function(x){
+    tbl <- table(x, exclude = NULL)
+    res <- cbind(tbl,round(prop.table(tbl)*100,2))
+    colnames(res) <- c('Count','Percentage')
+    res
+}
+
+#--- Summaries of other variables
+tz %$% tblFun(serostat)
+tz %$% tblFun(toilet)
+tz %$% tblFun(electricity)
+tz %$% tblFun(radio)
+tz %$% tblFun(tv)
+tz %$% tblFun(fridge)
+tz %$% tblFun(bike)
+tz %$% tblFun(car)
+tz %$% tblFun(floor)
+tz %$% tblFun(wall)
+tz %$% tblFun(roof)
+tz %$% tblFun(educat)
+tz %$% tblFun(married)
+tz %$% tblFun(partners)
+
+#--- Run all summaries at once
+lapply(tz, tblFun)
+
+#--- Alternate summary codes
+tz %$% summ(serostat)
+tz %$% summary(serostat)
+
+
+```
+
+The below code recodes age into two different age groups, and the sexual partners variable into 0, 1, or 2+ sexual partners. 
+
+> From a measurement perspective, do you think this categorisation is useful or is there a better way to handle these variables? In other words, what are the implications of categorising these variables? Do you think this will affect your analysis? 
+
+
+```{r recode_medconf}
+#--- Recoding the age variable and specifying it is a factor (categorical variable)
+tz <- tz %>% mutate(age.group = ifelse(age < 20, "14-19", "20-24")) %>% 
+             mutate(age.group = as.factor(age.group))
+
+#--- Recoding the partner variable
+tz <- tz %>% mutate(partners.cat = cut(partners,
+                   breaks=c(-Inf, 0, 1, Inf), 
+                   labels=c("0","1","2+")))
+```
+
+## HIV Prevalence
+
+Now let's look at the prevalence of HIV in the sample. We can also examine HIV prevalence by age, education, and number of partners using either the _tabpct_ command or the _cc_ command. Use _tabpct_ to get row or column percentages and _cc_ to get an odds ratio and associated confidence interval. 
+
+> Do you notice any systematic differences in prevalence by these variables?
+
+
+```{r summ_medconf}
+#--- Stratified summaries of HIV prevalence by Age
+tz %$% tabpct(serostat, age.group, percent = "col", graph = F)
+tz %$% cc(serostat, age.group, graph = F)
+
+#--- Are there trends in serostatus by age?
+tz %>% ggplot(aes(x = as.factor(age), fill = serostat)) +
+  geom_bar(position = "dodge")
+
+#--- Stratified summaries of HIV prevalence by Education
+tz %$% tabpct(educat, serostat, percent = "col", graph = F)
+tz %$% cc(serostat, educat, graph = F) 
+
+#--- Stratified summaries of HIV prevalence by Number of Partners
+tz %$% tabpct(partners.cat, serostat, percent = "row", graph = F)
+tz %$% cc(partners.cat, serostat, graph = F) 
+
+```
+
+## Age as Confounder
+
+Consider whether or not age should be considered a confounding factor on the association between education and HIV.
+
+> Draw the possible causal diagram to represent the scenario where age is a confounder.
+
+Compare the crude and adjusted ORs. Make sure you understand the different interpretation of the crude and the adjusted ORs.
+
+> Recalling that there is no formal statistical test for confounding, is there any _suggestion_ of confounding from the analyses below from a change in the unadjusted and adjusted coefficients?
+
+```{r logreg_medconf}
+#--- Logistic Regression
+glm(serostat ~ educat + age.group, family = binomial, data = tz) %>% logistic.display() 
+```
+
+## Causal Diagrams
+
+> How might you extend your causal diagram to include other potential confounders (or mediators) from this dataset? For example, what happens when we also investigate the potential confounding effect of marriage? 
+
+> On your causal diagram, which direction does the arrow go between education and marriage? How did you decide this?
+
+```{r logreg_adj_medconf}
+#--- Logistic Regression
+glm(serostat ~ educat + age.group + married, family = binomial, data = tz) %>% logistic.display() 
+```
+
+>Using your own knowledge and that of your colleagues, or by doing a brief search of the literature, list some potential mechanisms by which education could affect HIV risk in young women in Tanzania. 
+
+A mechanism is some route by which which change in an outcome is created; the process by which causal effects take place. For example, one mechanism could be education impacting HIV risk because HIV prevention programmes are delivered in schools.
+
+> What might the causal diagram look like for each of your identified mechanisms? Are any of your identified mechanisms of action specific to a particular context? Are any of these mechanisms testable from your data? 
+
+In the example above, our causal diagram would be amended to include a mediating variable between education and HIV risk. This mechanism would only be relevant in the context of girls who have been to school. We cannot test for this mechanism in the data as we do not have knowledge of whether HIV prevention programmes were implemented or not in each school. Note that we could collect this if we were designing an intervention or a survey - it is key in practical social epidemiology to consider possible mechanisms of action in the design phase. It is often insufficient to ask simply _whether_ there is an effect of a particular construct - we wish to know _how_ and _why_ it exists. 
+
+
+## Save New Dataset
+
+We have made some changes to the dataset that we may wish to save to use later.
+
+```{r write_medconf}
+write_csv(tz, "tz2.csv")
+```
+
+
+

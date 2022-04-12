@@ -1,0 +1,282 @@
+
+# PCA: Building an Asset Index
+
+This section of the practical will take you through constructing a DHS style asset index of household wealth. We will also construct a concentration index to look at household wealth and HIV prevalence. Then, we will return to mediation to answer the question of whether the number of sexual partners mediates the relationship between educational attainment and HIV status.
+
+Load the usual libraries:
+
+```{r pca_setup, include = F}
+# install.packages("readstata13")
+# install.packages("epiDisplay")
+# install.packages("fastDummies")
+# install.packages("magrittr")
+# install.packages("tidyverse")
+
+library(readstata13)
+library(epiDisplay)
+library(fastDummies)
+library(magrittr)
+library(tidyverse)
+
+
+#--- Turn off scientific notation and round everything to 3 decimal places
+options(scipen = 999, digits = 3)
+
+#--- Put all plots in black and white
+theme_set(theme_bw())
+
+```
+
+Before proceeding, either run the entire code that you saved from the previous session or run the line below to use the csv file from the last session. If you need a refresher on how PCA works, take a quick flick through the Beers Example at https://bookdown.org/danieljcarter/socepi/ or refer to the lecture slides.
+
+```{r pca_data}
+tz <- read.csv("./tz2.csv")
+```
+
+We are first going to extract measures of household assets. It is reasonable to think that ownership of some of these assets may encode some information about the socioeconomic position of that household within the wider community. Note that not only might this asset index be useful for characterising relative position (tacitly invoking a psychosocial theoretical model), but it may also be useful as a direct measure of deprivation (tacitly invoking a neomaterial theoretical model).
+
+## Descriptive Statistics
+
+The below code tabulates all of the frequencies and percents for each asset variable. Note that some of the asset variables have already had categories combined to ensure that low cell counts do not dramatically skew the PCA result - this kind of data tidying should be done prior to applying any kind of principal component analysis.
+
+> Create a table of these values and indicate whether or not you think they are a marker of higher or lower socioeconomic position as you enter them into this table. 
+
+```{r summ_pca}
+#--- Create a unique ID for each individual from their row number
+tz <- tz %>% rowid_to_column("ID")
+
+#--- Select just the asset variables and a unique ID
+assets <- tz %>% select(ID, water:roof)
+
+#--- Extract the summaries
+assets %>% count(water) %>% mutate(pct = n*100 / sum(n))
+assets %>% count(toilet) %>% mutate(pct = n*100 / sum(n))
+assets %>% count(electricity) %>% mutate(pct = n*100 / sum(n))
+assets %>% count(radio) %>% mutate(pct = n*100 / sum(n))
+assets %>% count(tv) %>% mutate(pct = n*100 / sum(n))
+assets %>% count(fridge) %>% mutate(pct = n*100 / sum(n))
+assets %>% count(bike) %>% mutate(pct = n*100 / sum(n))
+assets %>% count(car) %>% mutate(pct = n*100 / sum(n))
+assets %>% count(floor) %>% mutate(pct = n*100 / sum(n))
+assets %>% count(wall) %>% mutate(pct = n*100 / sum(n))
+assets %>% count(roof) %>% mutate(pct = n*100 / sum(n))
+
+```
+
+We may wish to do an initial test of our assumption that the asset variables together measure some underlying construct. One way to do this is to see how the variables correlate with one another. For example, we can investigate the association between electricity access and car ownership and clearly observe that there is a strong correlation. You may wish to modify this code to investigate some other variables. 
+
+> Spend some time investigating the relationship between variables you think might be associated with high SEP and with low SEP.
+
+Consider carefully what dimensions of socioeconomic position these sorts of associations might represent. For example, access to electricity is an area-level variable, constrated with car ownership which is at the level of the household, or even the individual. It may be possible that even high-SEP households still cannot access electricity if they live in an area with no electricity infrastructure - individuals may be relatively wealthy, but not wealthy enough to move or to change characteristics of their surrounding neighbourhood. 
+
+```{r assoc_pca}
+#--- Is there an association between electricity access and car ownership?
+assets %$% cc(car, electricity, graph = F)
+```
+
+## PCA to measure SEP
+
+Now we will run a PCA, following Vyas et al (2004), assuming that the first principal component can be used as a measure of socioeconomic position. Again, to unpack what's going on behind this code, it may be worth revisiting the beers example from the lecture - the associated Rmd file can also be found on Daniel's github. 
+
+Note that we have to manually recode each categorical variable into a binary variable - dummy_cols() handles this for us in R! We also have to manually remove any individuals with missing data - we do not here take a principled approach to missing data, we will simply remove it and assume that it is missing completely at random. Depending on the degree of missing data, this would normally not be the appropriate approach! Note how many individuals were lost when we removed rows containing missing data.
+
+```{r run_pca}
+#--- Remove missing data
+assets <- assets %>% drop_na()
+
+#--- Create dummy columns
+dummies <- assets %>% select(water, floor, wall, roof) %>% dummy_cols() %>% 
+  select(-c(water, floor, wall, roof))
+
+#--- Convert the remaining data into numeric variables for analysis
+cols <- assets %>% select(electricity, radio, tv, fridge, car, toilet) %>%
+  mutate(electricity = ifelse(electricity == "no", 0, 1),
+         radio = ifelse(radio == "no", 0, 1),
+         fridge = ifelse(fridge == "no", 0, 1),
+         tv = ifelse(tv == "no", 0, 1),
+         car = ifelse(car == "no", 0, 1),
+         toilet = ifelse(toilet == "No toilet", 0, 1)) %>%
+  mutate_all(as.numeric)
+
+#--- Bind the dummy columns back together with the other variables
+pca_cols <- cbind(cols, dummies)
+
+#--- Conduct the PCA
+assets_pca <- prcomp(pca_cols, scale = T)
+
+#--- Get the eigenvectors for PC1-PC3
+assets_pca$rotation[,1:3] %>% round(2)
+
+#--- Get the eigenvalues (and Proportion of Variance)
+summary(assets_pca)
+(assets_pca$sdev)^2 %>% round(2)
+
+```
+
+Let's extract the eigenvectors (loadings) first. 'Loadings' is a term used to refer to the eigenvectors when they are transformed by multiplication by the square root of the eigenvalues and it is actually 'loadings' that prcomp() returns. Mathematically, this is done such that the loadings can be interpreted directly as the correlation between the component and the variable. 
+
+Untransformed eigenvectors themselves are not useful for interpretation of a PCA - I use the two terms 'eigenvector' and 'loading' interchangeably although this is not strictly correct...! 
+
+> How many principal components did the PCA produce? What proportion of the total variance is explained by the first prinipal component? The second?
+
+> Which variables are associated with Principal Component 1? Does PC1 represent high or low SES?
+
+We can interpret the loadings as the correlation between the principal component and the variable - so we can see that electricity access, TV ownership, fridge ownership, having water piped to the house, and having floors and walls made of cement are associated with high values of PC1 (ascertained from the positive sign of the eigenvector, indicating a positive correlation). Having a floor made of earth or sand and a roof made of grass, thatch, or mud are associated with low values of PC1.
+
+> Do these associations make sense with your initial suggestions about which assets or household characteristics would be associated with higher socioeconomic position? 
+
+Let's now assume that PC1 is in fact measuring SEP. We can extract the scores for each individual of PC1 and take a look at how the scores are distributed in a plot.
+
+```{r scores_pca}
+#--- Extract the scores from PC1, where high scores are representative of high SEP
+assets$pc1 <- assets_pca$x[,1]
+
+#--- Get a histogram of PC1
+ggplot(assets, aes(x = pc1)) +
+  geom_histogram(bins = 50)
+```
+
+> What do you notice about the distribution of the SEP score? Is the SEP score better at distinguishing between low-SEP individuals or high-SEP individuals?
+
+We can either use this score as a continuous variable, but for ease of interpretation, we divide the score into quintiles.
+
+```{r quint_pca}
+#--- Generate quintiles
+assets <- assets %>% mutate(pc1.q = ntile(pc1, 5)) %>%
+                     mutate(pc1.q = as.factor(pc1.q)) %>% 
+                     mutate(pc1.q = fct_recode(pc1.q,
+                                               `Low SEP` = "1",
+                                               `Low-Middle SEP` = "2",
+                                               `Middle SEP` = "3",
+                                               `High-Middle SEP` = "4",
+                                               `High SEP` = "5"))
+
+#--- Check quintiles were appropriately created (equal numbers in each group)
+summary(assets$pc1.q)
+
+#--- Get the mean score in each quintile
+assets %>% group_by(pc1.q) %>% dplyr::summarise(mean = mean(pc1))
+```
+
+Now we have two distinct measures of SEP: we have an asset/household characteristic index and we also have education, which in many contexts, is part of socioeconomic position. 
+
+## SEP, Education, HIV Prevalence
+
+We turn our attention now to the association between these two measures of SEP and HIV prevalence.
+
+Let's conduct some initial analyses:
+
+```{r assoc_sep_pca}
+#--- Link PC1 & PC1 quintiles back into the tz dataset
+tz <- assets %>% select(ID, pc1, pc1.q) %>% left_join(tz, ., by = "ID")
+
+#--- Explicitly set the baseline of serostat to be "hiv negative"
+tz <- tz %>% mutate(serostat = fct_relevel(serostat, "hiv negative"))
+
+#--- Is there an association between Asset Index & HIV Prevalence?
+tz %$% tabpct(serostat, pc1.q, percent = "col", graph = F)
+tz %$% cc(serostat, pc1.q, graph = F)
+
+#--- Is there an association between Education & HIV Prevalence?
+tz %$% tabpct(serostat, educat, percent = "col", graph = F)
+tz %$% cc(serostat, educat, graph = F)
+
+```
+
+## Concentration Curve & Index
+
+One more extensive analysis we can conduct to ascertain the association between SEP and HIV status is to construct a concentration curve. A concentration curve is designed to investigate inequality. A concentration curve ranks everyone from lowest SEP to highest SEP and compares the distribution of some health outcome against that ranking.
+
+Consider: if everyone had equal chance of contracting HIV regardless of their SEP, then as we move from lowest SEP to highest SEP, the proportion of individuals with HIV should remain the same.  
+
+So we want to compare how distribution of HIV status against the SEP score that we generated with the PCA.
+
+```{r conc_pca}
+#--- Take a selection of the dataset for clarity, arrange from lowest to highest SEP and drop NAs
+conc <- tz %>% select(ID, serostat, pc1) %>% 
+               arrange(pc1) %>% 
+               drop_na()
+
+#--- Convert 'serostat' to 0s/1s with "hiv positive" as 1
+conc <- conc %>% mutate(serostat = as.numeric(serostat)-1) 
+                
+
+#--- Get the cumulative proportion of serostat
+conc$c.sero <- cumsum(conc$serostat)/sum(conc$serostat)
+
+# The cumulative sum is a 'running total' of the number who have HIV as we go from low SEP to high SEP
+# The cumulative proportion is the cumulative sum expressed as a percentage of the overall total individuals with HIV
+# Note: the cumulative proportion goes from 0 to 1
+
+
+#--- Get the cumulative ranking of the SEP score (i.e. this represents the proportion of individuals with a lower SEP)
+conc$c.sep <- conc %$% cume_dist(pc1)
+
+#--- Plot the concentration curve
+ggplot(conc, aes(x = c.sep, y = c.sero)) +
+  geom_point(color = "red") +
+  geom_line() +
+  geom_abline(color = "forestgreen") +
+  labs(title = "Concentration Curve: HIV Status vs SEP",
+       x = "Cumulative SEP Rank",
+       y = "Cumulative HIV")
+
+# The green line represents perfect equality: HIV being gotten at the same rate as SEP increases.
+
+```
+
+> What do you conclude from this plot? Is there a suggestion of inequality in the patterning of HIV risk? If the answer is unclear, note that 50% of the HIV cases are accounted for by ~35% of the individuals - which 35% of the population are those individuals?
+
+Another way we can numerically quantify this inequality is through the concentration index. The concentration index represents the amount of socioeconomic inequality in a given health variable. It is useful as it can be compared across health variables, so we can see the relative inequality for a number of different variables. The concentration index is the area between the calculated concentration curve and the line of perfect equality. A negative value indicates disproportionate concentration amongst the poor, while a positive value indicates disproportionate concentration amongst the rich.
+
+```{r conc_index_pca}
+#--- Calculate the concentration index (using formula)
+2/mean(conc$serostat) * cov(conc$serostat, conc$c.sep)
+
+```
+
+You may have heard of the Gini coefficient, a standardised measure of inequality. The Gini coefficient is calculated in the same way as the concentration index, by calculating the area under a particular type of concentration curve. The curve used to calculate the Gini index is called the Lorenz curve, and it uses income in place of SEP.
+
+## Confounding & Mediation
+
+Returning to SEP and education, draw a causal diagram for how you think the SEP asset index, education, and HIV status are related. 
+
+> Which way did you draw the arrow between education and SEP? What is the key consideration of the population under study that leads you to draw the arrow this way?
+
+> Is SEP asset index a confounder or a mediator between education and HIV status? Is education a confounder or a mediator between SEP asset index and HIV status? 
+
+> Which of the below analyses is the correct one to investigate the association between SEP asset index and HIV status? 
+
+```{r adj_analysis_pca}
+#--- Analysis unadjusted for education: OR for High SEP vs Low SEP is 0.40 (0.17, 0.98), p = 0.046
+glm(serostat ~ pc1.q, family = binomial, data = tz) %>% logistic.display() 
+
+#--- Analysis adjusted for education: OR for High SEP vs Low SEP is 0.70 (0.28, 1.78), p = 0.455
+glm(serostat ~ pc1.q + educat, family = binomial, data = tz) %>% logistic.display() 
+```
+
+You should have concluded that the unadjusted analysis was correct. Education mediates the relationship between SEP and HIV. You should have drawn the arrow from SEP to Education - given that our population is adolescent girls and young women and the study is cross sectional, it is more likely that the SEP of the household influences education than vice versa. If we were to take a life-course approach and had more years of data, we could account for cyclical effects between education and SEP.
+
+Note that if you were using conventional mesaures of "statistical significance" (which hopefully you never would...), you would have arisen at different conclusions depending on whether you adjusted or not - always draw the causal diagram!
+
+Now let us examine some more mediation in this dataset. Let us hypothesise that education impacts sexual behaviour (as measured by number of partners), and that in turn, sexual behaviour impacts HIV risk. Let's also assume that age influences education, sexual behaviour, and HIV risk. Quickly sketch the causal diagram corresponding to this statement.
+
+We will conduct a Baron & Kenny style assessment for mediation for this hypothesis as we did in the example above. We will want to look at sexual behaviour as a mediator and age as a confounder. 
+
+> Create a table to display the odds ratios for primary vs. no education and for secondary vs. no education in the unadjusted, adjusted, and adjusted + mediation scenarios.
+
+```{r adjust_analysis_edu_pca}
+#--- Analysis without adjusting: 0.57, 0.10
+glm(serostat ~ educat, family = binomial, data = tz) %>% logistic.display() 
+
+#--- Analysis adjusting for age group: 0.77, 0.13
+glm(serostat ~ educat + age.group, family = binomial, data = tz) %>% logistic.display() 
+
+#--- Analysis adjusting for age group + potential mediation from number of partners: 0.85, 0.30
+glm(serostat ~ educat + age.group + partners.cat, family = binomial, data = tz) %>% logistic.display() 
+
+```
+
+> Is there a large difference in the OR when you add in the potential mediating variable of number of partners? Would you choose to further investigate number of partners as a mediator?
+
+> What do you think the overarching causal diagram looks like for this question? Can you combine the two diagrams you have drawn into one? Think about how you might ascertain which variables you need to control for (i.e. which are confounders). This will be addressed in the DAGs lecture.
