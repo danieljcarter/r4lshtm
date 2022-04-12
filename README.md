@@ -8,23 +8,26 @@ This material is constantly being updated and should be complete by the end of t
 
 The mapping of sessions is as follows:
 
-| Course 	| Filename 	                 | Session Number 2022 	| Session Title 2022 	|
-|--------	|----------	                 |-----------	      |-------	        |
-| STEPH   | prac01_means               |  Session 6/7     | Comparing two means in Stata / Non-parametric methods      	        |
-|        	| prac02_categorical         |  Session 9       | Categorical variables      	|
-|        	| prac03_strat2x2            |  Session 10      | Stratified analysis of 2x2 tables      	|
-|        	| prac04_linreg              |  Session 12      | Simple regression      	|
-|        	| prac05_extlinreg           |  Session 13	    | Multivariable regression      	|
-|        	| tbd                        |  Session 14	    | Estimation in sample surveys      	|
-|        	| tbd                        |  Session 15	    | Power & sample size      	|
-|--------	|----------	                 |-----------	      |-------	|
-| SME     | prac01_survival            |           	      |       	|
-|         | prac02_case-control        |           	      |       	|
-|         | prac03_logistic          	 |           	      |       	|
-|         | prac04_logistic-covariates |           	      |       	|
-|--------	|----------	                 |-----------	      |-------	|
-| ASME    | prac01_classical           |   Session 1      |  Self-directed Exercises     	|
-|         | prac03_matched             |   Session 3      |  Matched case-control studies     	|
+| Course 	    | Filename 	                 | Session Number 2022 	| Session Title 2022 	|
+|--------	    |----------	                 |-----------	          |-------	        |
+| STEPH       | prac01_means               |  Session 6/7         | Comparing two means in Stata / Non-parametric methods      	        |
+|        	    | prac02_categorical         |  Session 9           | Categorical variables      	|
+|        	    | prac03_strat2x2            |  Session 10          | Stratified analysis of 2x2 tables      	|
+|        	    | prac04_linreg              |  Session 12          | Simple regression      	|
+|        	    | prac05_extlinreg           |  Session 13	        | Multivariable regression      	|
+|        	    | tbd                        |  Session 14	        | Estimation in sample surveys      	|
+|        	    | tbd                        |  Session 15	        | Power & sample size      	|
+|--------	    |----------	                 |-----------	          |-------	|
+| SME         | prac01_survival            |           	          |       	|
+|             | prac02_case-control        |           	          |       	|
+|             | prac03_logistic          	 |           	          |       	|
+|             | prac04_logistic-covariates |           	          |       	|
+|--------	    |----------	                 |-----------	          |-------	|
+| Social Epi  | prac01_medconf             |   Session 15         |  Mediation & Confounding    	|
+|             | prac02_pca                 |   Session 20         |  Principal component analysis   	|
+|--------	    |----------	                 |-----------	          |-------	|
+| ASME        | prac01_classical           |   Session 1          |  Self-directed exercises     	|
+|             | prac03_matched             |   Session 3          |  Matched case-control studies     	|
 
 
 
