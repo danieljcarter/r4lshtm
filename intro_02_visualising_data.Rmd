@@ -18,6 +18,7 @@ There is an ongoing 'debate' between whether one should use the tidyverse for da
 
 ```{r}
 #--- Load libraries
+library(psych)
 library(tidyverse)
 ```
 
@@ -30,7 +31,7 @@ We use a simple function to read in data: read_csv().
 #--- Read in the data
 sdg <- read_csv("./sdg.csv")
 
-#--- This will only work on my computer
+#--- This will only work on my computer: run it and see what happens
 sdg <- read_csv("E:/LSHTM/Teaching/r4epi/sdg.csv")
 
 #--- Get working directory

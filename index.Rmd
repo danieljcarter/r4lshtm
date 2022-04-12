@@ -39,6 +39,6 @@ Much of the intro material for this book is based off of [Hadley Wickham's R for
 
 A pedagogical note: There is no rush to get through these notes! Move through them at your own pace. If you are struggling with a particular exercise, re-read the notes above the exercise as it should point you towards the solution. Recall that your colleagues are also a useful source of knowledge - take the time to share with each other what it is you are having difficulty with! Part of learning how to code effectively is to struggle with the code, and raising in yourself questions about why your code isn't working (or what it is that you don't understand, or what you want to know more about it). You are ultimately in charge of your own learning, so it will not benefit you to speed through the exercises. 
 
-I hope you enjoy this sequence of courses - being a better coder often makes one a better epidemiologist or public health practicioner, and I hope they provide a rich addition to your learning.
+I hope you enjoy this sequence of courses - being a better coder often makes one a better epidemiologist or public health practitioner, and I hope they provide a rich addition to your learning.
 
 Happy coding :)
