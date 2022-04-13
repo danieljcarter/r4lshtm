@@ -103,7 +103,7 @@ pa <- c("Melanesia", "Micronesia", "Polynesia")
 
 > Step 6: Get summary statistics for infant mortality, gdp, and dollars per day using summary(). Get the mean log (base 10!) dollars per day and the mean infant survival rate by group. To get the infant survival rate, you will have to calculate it according to the equation below, where the sigma stands for sum. The logarithm function is log10(). Hint: (filter, group_by, mutate, summarise)
 
-$$ Surv = 1 - \left( \Sigma(\frac{mort}{1000 \cdot pop}) / \Sigma(pop) \right) $$
+$$ Surv = 1 - \left( \Sigma(\frac{mort/1000}{pop}) / \Sigma(pop) \right) $$
 
 ```{r}
 
