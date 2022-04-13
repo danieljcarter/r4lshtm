@@ -1,5 +1,5 @@
 ---
-title: "Session 5 - Modelling Data"
+title: "Session 5b - Modelling Data - Solutions"
 ---
 
 # Modelling Data 
@@ -10,54 +10,6 @@ We can use regression to determine the relationship between two variables. The e
 sdg <- read.csv("./sdg.csv", stringsAsFactors = T)
 ```
 
-Let's examine the relationship between urban populations and TB incidence. One hypothesis might be that more urban populations might be more dense, and dense populations might also have more TB given that TB spreads easily in dense environments. A competing hypothesis is that more urban nations might be wealthier on the whole and therefore have less TB.
-
-One visual way to explore this relationship might be a scatterplot. 
-
-```{r}
-#--- Create a scatterplot of population density vs TB
-sdg %>% 
-  ggplot(aes(x = urb, y = tb)) + 
-  geom_point() +
-  theme_bw()
-```
-
-From the scatterplot, it isn't clear if there is a relationship. One thing we can try to do is model the 'cloud' of points with a line. We want to examine a line that best represents the data. In other words, we want a line that is as close as possible to each of the points (if the line is far from the point, it does not represent that point well). To look at that line, we add a call to geom_smooth() to the plot. We specify "method = lm" to say we want a linear model and "se = F" to say we don't want a region of confidence around the line.
-
-```{r}
-#--- Create a scatterplot of % of urban population vs TB incidence
-sdg %>% 
-  ggplot(aes(x = urb, y = tb)) + 
-  geom_point() +
-  geom_smooth(method = lm, se = F) +
-  theme_bw()
-```
-
-It's clear that there is an inverse relationship between % urban and TB incidence. We might want to know how steeply that line is declining in number. For every 1% more urban population, how much less TB might we expect? We can answer this with a linear model.
-
-You'll notice that lm() takes a 'data' argument, but it is not the leftmost argument. To specify where the left argument should go, we use the fullstop.
-
-```{r}
-#--- Fit a linear model
-mod <- sdg %>% lm(tb ~ urb, data = .)
-summary(mod)
-```
-
-There is a large amount of information displayed here - but the key bit is the area under 'estimate' next to 'urb' - the -2.25. This is the slope (gradient) of the line. For every extra % of urbanity, we can expect about 2 cases less of TB per year. 
-
-What if we are just seeing this slope because high income countries are more dense? We might want to make a more accurate comparison by stratifying by region. We can examine this visually, quite easily. There seems to be a different pattern of association depending on a country's income status.
-
-```{r}
-#--- Create a scatterplot of % of urban population vs TB incidence by LMIC status
-sdg %>% 
-  ggplot(aes(x = urb, y = tb, group = lmic, color = lmic)) + 
-  geom_point() +
-  geom_smooth(method = lm, se = F) +
-  theme_bw()
-```
-
-
-
 ## Final Exercise
 
 We are now going to put together everything that you have learned in one big final exercise. We will build everything up in stages.
@@ -67,19 +19,21 @@ We are going to use the gapminder data in the dslabs package to explore a phenom
 > Step 1: Install the dslabs package. Load its library. Ensure you also have loaded the epiDisplay and tidyverse packages.
 
 ```{r}
-
+library(dslabs)
 ```
 
 > Step 2: Assign the gapminder dataset (called gapminder) to an object called gap
 
 ```{r}
-
+gap <- gapminder
 ```
 
 > Step 3: Add a new column to represent "dollars per person per day" using GDP and population. Then, for easier plotting,  Restrict the gap dataset to the year 2010. Remember to reassign gap.
 
 ```{r}
-
+gap %<>% 
+  mutate(dollars.pp.pd = (gdp/population)/365.25) %>% 
+  filter(year == "2010")
 ```
 
 > Step 4: Using mutate(), case_when(), and %in%, create a new variable called group with nine levels: "Western Europe, North America, Aus/NZ", "Eastern Europe", "Western & Central Asia", "Northern Africa", "Sub-Saharan Africa", "East Asia", "Southern Asia","Latin America", and "Pacific Islands". (Hint: summary() first!). Some code is supplied to ease your typing.
@@ -92,12 +46,25 @@ ssa <- c("Eastern Africa", "Middle Africa", "Southern Africa", "Western Africa")
 ea <- c("Eastern Asia", "South-Eastern Asia")
 la <- c("Caribbean", "Central America", "South America")
 pa <- c("Melanesia", "Micronesia", "Polynesia")
+
+gap %<>% mutate(group = case_when(
+  region %in% hic ~ "Western Europe, North America, Aus/NZ",
+  region == "Eastern Europe" ~ "Eastern Europe",
+  region %in% wca ~ "Western & Central Asia",
+  region == "Northern Africa" ~ "Northern Africa",
+  region %in% ssa ~ "Sub-Saharan Africa",
+  region %in% ea ~ "East Asia",
+  region == "Southern Asia" ~ "Southern Asia",
+  region %in% la ~ "Latin America",
+  region %in% pa ~ "Pacific Islands"))
 ```
 
 > Step 5: Convert the group variable to a factor and cross tabulate it with continent to check the reassignation worked (hint: tabpct())
 
 ```{r}
+gap %<>% mutate(group = as.factor(group))
 
+gap %$% tabpct(group, continent, graph = F)
 ```
 
 
@@ -106,6 +73,16 @@ pa <- c("Melanesia", "Micronesia", "Polynesia")
 $$ Surv = 1 - \left( \Sigma(\frac{mort}{1000 \cdot pop}) / \Sigma(pop) \right) $$
 
 ```{r}
+gap %$% summary(infant_mortality)
+gap %$% summary(gdp/population)
+gap %$% summary(dollars.pp.pd)
+
+gap %>% 
+  drop_na() %>% # could also filter() here to remove only NAs for relevant variables
+  group_by(group) %>% 
+  mutate(deaths.per.1000 = sum(infant_mortality/(1000*population))) %>% 
+  summarise(log.dpd = mean(log10(dollars.pp.pd), na.rm = T),
+            inf.surv = 1 - sum(infant_mortality/1000*population)/sum(population))
 
 
 ```
@@ -113,6 +90,15 @@ $$ Surv = 1 - \left( \Sigma(\frac{mort}{1000 \cdot pop}) / \Sigma(pop) \right) $
 > Step 7: Pipe the above summary data into a call to ggplot using geom_point(). Colour the points and adjust the size of the points appropriately.
 
 ```{r}
+gap %>% 
+  drop_na() %>% # could also filter() here to remove only NAs for relevant variables
+  group_by(group) %>% 
+  mutate(deaths.per.1000 = sum(infant_mortality/(1000*population))) %>% 
+  summarise(log.dpd = mean(log10(dollars.pp.pd), na.rm = T),
+            inf.surv = 1 - sum(infant_mortality/1000*population)/sum(population)) %>% 
+  ggplot(aes(x = log.dpd, y = inf.surv, color = group)) +
+  geom_point() +
+  theme_bw()
 
 
 ```
@@ -122,6 +108,14 @@ There is a clear relationship from the plot. Let's try plotting all the data.
 > Step 8: Save the summarised data from step 6 into a new dataset. Conduct a linear regression to see the change in survival expected from log(1) dollar a day more.
 
 ```{r}
+gap.sum <- gap %>% 
+  drop_na() %>% # could also filter() here to remove only NAs for relevant variables
+  group_by(group) %>% 
+  mutate(deaths.per.1000 = sum(infant_mortality/(1000*population))) %>% 
+  summarise(log.dpd = mean(log10(dollars.pp.pd), na.rm = T),
+            inf.surv = 1 - sum(infant_mortality/1000*population)/sum(population))
+
+lm(inf.surv*100 ~ log.dpd, gap.sum) %>% regress.display()
 
 ```
 
@@ -133,20 +127,37 @@ $$ Surv = 1 - (mort/1000) $$
 
 
 ```{r}
-
-
+gap %>% 
+  drop_na() %>% # could also filter() here to remove only NAs for relevant variables
+  ggplot(aes(x = log10(dollars.pp.pd), y = (1- (infant_mortality/1000)), color = group)) +
+  geom_point() +
+  theme_bw()
 ```
 
 > Step 9: Using the above code, put a line through each group (e.g. fit a linear regression through each group) and display the new plot.
 
 ```{r}
+gap %>% 
+  drop_na() %>% # could also filter() here to remove only NAs for relevant variables
+  ggplot(aes(x = log10(dollars.pp.pd), y = (1- (infant_mortality/1000)), color = group)) +
+  geom_point() +
+  geom_smooth(method = lm, se = F) +
+  theme_bw()
 
 ```
 
 > Step 10: For every 10x more dollars in Sub-Saharan Africa, what % more infants will survive? What about in Western Europe?
 
 ```{r}
+gap %>% 
+  filter(group == "Sub-Saharan Africa") %>% 
+  lm((1- (infant_mortality/1000))*100 ~ log10(dollars.pp.pd), .) %>% 
+  regress.display()
 
+gap %>% 
+  filter(region == "Western Europe") %>% 
+  lm((1- (infant_mortality/1000))*100 ~ log10(dollars.pp.pd), .) %>% 
+  regress.display()
 ```
 
 > Step 11: What do you conclude about the relationship between dollars per day and survival? Discuss with those around you.
