@@ -6,6 +6,8 @@ This repository collates all of the practical sessions from the statistical cour
 
 This material is constantly being updated and should be complete by the end of the 2021-2022 academic year. If you are working with these files and notice any changes that need to be made, or if you wish to add R files for any other courses at LSHTM, please do [make a pull request](https://opensource.com/article/19/7/create-pull-request-github).
 
+Big shoutout to [Andrea Mazzella](https://github.com/andreamazzella) & the MSc Epi 2018/19 cohort for making this possible!
+
 The mapping of sessions is as follows:
 
 | Course 	    | Filename 	                 | Session Number 2022 	| Session Title 2022 	|
