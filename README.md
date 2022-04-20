@@ -29,15 +29,15 @@ The mapping of sessions is as follows:
 | ASME        | prac01_classical           |   Session 1          |  Self-directed exercises     	|
 |             | prac03_matched             |   Session 3          |  Matched case-control studies     	|
 
-The datasets required to work through these are: 
+The datasets required to work through these are presently available on the SME & ASME course pages: 
 
-bab9.dta
-diabraz17.dta
-diabraz217.dta
-mortality17.dta
-mwanza17.dta
-trinmlsh.dta
-whitehall17.dta
+- bab9.dta
+- diabraz17.dta
+- diabraz217.dta
+- mortality17.dta
+- mwanza17.dta
+- trinmlsh.dta
+- whitehall17.dta
 
 
 
