@@ -1,0 +1,212 @@
+---
+title: "2: Review of logistic regression"
+subtitle: "R 4 ASME"
+author: Author – Andrea Mazzella & Daniel J Carter
+---
+
+-------------------------------------------------------------------------------
+
+## Contents
+
+This is a summary of the four SME topics on logistic regression.
+
+-------------------------------------------------------------------------------
+
+## Data management
+
+```{r message=FALSE, warning=FALSE}
+# Load packages
+library(haven)
+library(magrittr)
+library(epiDisplay)
+library(epitools)
+library(pubh)
+library(rstatix)
+library(tidyverse)
+
+# Limit significant digits to 2, remove scientific notation
+options(digits = 2, scipen = 9)
+```
+
+```{r}
+# Data import
+mwanza <- read_dta("mwanza17.dta") %>% as_factor()
+
+# Data tidying
+# Recode missing values
+mwanza %<>% mutate(across(everything(), ~ na_if(.x, 9)))
+
+# Create new variables, relevel and label
+mwanza %<>%
+  mutate(age2 =  as.factor(
+    case_when(
+      age1 == "1" | age1 == "2"  ~ "15-24",
+      age1 == "3" | age1 == "4" ~ "25-34",
+      age1 == "5" | age1 == "6" ~ "35+"))) %>% 
+  mutate(ed2 =  as.factor(
+    case_when(ed == 1 ~ 0,
+              ed != 1 ~ 1)))
+```
+
+
+# 1. Planning your model
+
+_Without coding_, write a logistic regression model to investigate the association between:
+- HIV status (outcome)
+- lifetime number of sexual partners (`npa`) as a 4-level factor
+
+Then build on this model by including schooling (`ed2`) as a binary variable.
+
+
+# 2. Logistic regression
+
+## 2a. Tabulation
+
+> Obtain a frequency table of `npa`.
+
+```{r}
+mwanza %$% table(npa, useNA = "ifany")
+```
+
+What is the most common number of lifetime sexual partners?
+
+> Cross-tabulate number of lifetime sexual partners with HIV status.
+
+```{r}
+mwanza %$% tabpct(npa, case, percent = "col", graph = F)
+```
+
+
+
+## 2b. Unadjusted logistic regression
+
+> Fit a logistic model to estimate the magnitude of association between `npa` (as a factor) and HIV status.
+
+```{r}
+glm(case ~ npa, family = "binomial", data = mwanza) %>% 
+  logistic.display()
+
+```
+
+There is very strong evidence against the null hypothesis of no association between HIV status and number of sexual partners (LRT p < 0.001).
+
+
+
+## 2c. Change baseline group
+
+By default, the baseline level of comparison will be the smallest value. You might want to use the most prevalent level of `npa` as a baseline, in order to calculate OR relative to that level.
+
+In order to do this, you need to relevel the factor - here is the most explicit way of doing so:
+
+```{r}
+# Relevel the factor
+mwanza$npa <- factor(mwanza$npa,
+                     levels = c("2", "1", "3", "4"))
+
+# Logistic regression (unchanged)
+glm(case ~ npa, family = "binomial", data = mwanza) %>% 
+  logistic.display()
+
+# Relevel the factor back, if you want
+# mwanza$npa <- factor(mwanza$npa,
+#                      levels = c("1", "2", "3", "4"))
+```
+
+
+## 2d. Logistic model with confounding
+
+> Now also include `age1` treated as a factor in your model (keeping 2 as the baseline level).
+
+```{r}
+glm(case ~ npa + age1, family = "binomial", data = mwanza) %>% 
+  logistic.display()
+
+```
+
+What is your conclusion?
+
+# 3. More on confounding + intro to interaction
+
+## 3a. School
+
+> Check if the risk of HIV associated with `npa` and `age1` is confounded by attending school (`ed2`).
+
+```{r}
+glm(case ~ npa + age1 + ed2, family = "binomial", data = mwanza) %>% 
+  logistic.display()
+```
+
+
+## 3b. 
+In R formulae, the `*` (equivalent to `##` in Stata) is used to specify including both an interaction AND individual risk factors. We use lrtest in the epiDisplay package to compare models. What do you conclude?
+
+```{r}
+# Model with interaction
+logit_inter <- glm(case ~ npa * ed2 + age1, family = "binomial", data = mwanza)
+
+# Model without interaction
+logit_without <- glm(case ~ npa + ed2 + age1, family = "binomial", data = mwanza)
+
+# Likelihood ratio test
+epiDisplay::lrtest(logit_without, logit_inter)
+
+```
+
+# 4. Interaction with more than 2 levels
+
+> Try fitting a model including an interaction between `npa` and `age1` and have a look at the results.
+
+```{r}
+glm(case ~ npa * age1, family = "binomial", data = mwanza) %>% 
+  logistic.display()
+```
+
+
+Cross-tabulate `npa` and `age1`. What's the problem and how can we solve it?
+
+```{r}
+mwanza %$% table(age1, npa, case, useNA = "ifany")
+```
+
+
+## 4b. Solving the issue
+
+In order to fix the issue of data sparsity, we can combine levels 3 and 4 of `npa`. 
+
+```{r}
+# Create a new variable, relevel and label
+mwanza %<>%
+  mutate(partners =  factor(
+    case_when(npa == "1" ~ "<=1",
+              npa == "2" ~ "2-4",
+              npa == "3" | npa == "4" ~ ">=5"),
+    levels = c("2-4", "<=1", ">=5")
+  ))
+
+# Check it worked well
+mwanza %$% table(npa, partners, useNA = "ifany")
+```
+
+We can then use this new variable, `partners`, to create a model for interaction and compare it to a model without interaction with a LRT.
+
+```{r}
+# Model with interaction
+logit_inter3 <- glm(case ~ partners * age1, family = "binomial", data = mwanza)
+epiDisplay::logistic.display(logit_inter3)
+
+# Model without interaction
+logit_without3 <- glm(case ~ partners + age1, family = "binomial", data = mwanza)
+
+# Likelihood ratio test
+epiDisplay::lrtest(logit_inter3, logit_without3)
+
+```
+
+
+
+# 5. 28/04 -- To come :)
+
+
+
+-------------------------------------------------------------------------------
+
