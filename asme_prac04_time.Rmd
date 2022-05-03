@@ -1,0 +1,292 @@
+---
+title: "6: Stratifying by time"
+subtitle: "R 4 ASME"
+author: Andrea Mazzella & Daniel J Carter
+---
+
+-------------------------------------------------------------------------------
+
+## Contents
+
+* Create a "survival object" to analyse cohort studies
+* Calculate incidence rates from a cohort study
+* Stratify rates
+  * by a categorical variable
+  * by a time variable (by doing a Lexis expansion)
+
+-------------------------------------------------------------------------------
+
+## 0. Packages and options
+
+```{r message=FALSE, warning=FALSE}
+# Load packages
+library(haven)
+library(magrittr)
+library(survival)
+library(lubridate) # Note: new package! May need to be installed
+library(fmsb) # Note: new package! May need to be installed
+library(epiDisplay)
+library(tidyverse)
+
+# Limit significant digits to 3, reduce scientific notation
+options(digits = 3, scipen = 9)
+```
+
+
+## 1. Data management
+
+Import and explore `whitehal.dta`. These are the variables of interest:
+* *Outcome*: death from cardiac event (`chd`)
+* *Exposure*: job grade (`grade4`, `grade`)
+* *Dates*
+ * Date of birth: `timebth`
+ * Date of entry: `timein`
+ * Date of exit: `timeout`
+* *Confounder*: smoking status (`smok`)
+
+```{r}
+# Import the dataset
+whitehall <- read_stata("whitehall17.dta") %>% as_factor()
+
+# Preview
+whitehall
+```
+
+```{r include=FALSE}
+# Explore data types
+glimpse(whitehall)
+```
+
+As you can see, there are no value labels, so we add them with reference to the dataset help file.
+
+```{r data_management, include=FALSE}
+# Rename and factorise variables, label values, add person-years at risk variable
+whitehall %<>%
+  mutate(
+    id = as.integer(id),
+    all = as.integer(all), # NB coding outcome as numeric
+    chd = as.integer(chd),
+    grade4 = factor(grade4,
+      levels = c(1, 2, 3, 4),
+      labels = c("admin", "profess", "clerical", "other")),
+    smok = factor(smok,
+      levels = c(1, 2, 3, 4, 5),
+      labels = c("never", "ex", "1-14/day", "15-24/day", "25+/day")),
+    grade = factor(grade, 
+                   levels = c(1, 2),
+                   labels = c("higher", "lower")),
+    cholgrp = factor(cholgrp),
+    sbpgrp = factor(sbpgrp),
+    py = time_length(interval(as.Date(timein), as.Date(timeout)), "days"))
+
+# Recode smoking variable for optional exercises
+whitehall %<>%
+  mutate(smok3 = as.factor(case_when(smok == "never" ~ "never",
+                                     smok == "ex" ~ "ex",
+                                     smok == "1-14/day" ~ "current",
+                                     smok == "15-24/day" ~ "current",
+                                     smok == "25+/day" ~ "current")))
+
+# Order levels
+whitehall$smok3 <- fct_relevel(whitehall$smok3, "never", "ex", "current")
+
+# Check it worked ok
+glimpse(whitehall)
+
+# Descriptive stats
+summary(whitehall)
+```
+
+-------------------------------------------------------------------------------
+
+
+## 2. Calculating rates and RR
+
+How to calculate rates stratified by exposure (the two grades of employment: `grade`):
+
+You create a survival object with `Surv()`; it contains duration of follow-up and status at end of follow-up. This is equivalent to `stset` in Stata.
+
+You then calculate stratified rates with `pyears()`, where pyears stands for person years. This function takes two arguments: the survival object you have just created with Surv(), and then the stratification variable; this can be piped into `summary()`. This is equivalent to `strate` in Stata.
+
+(NB: `pyears()` automatically scales from days to years - if you don't want this to happen, for example because your Surv object is already set in years, you need to indicate it with argument `scale = 1`.)
+
+```{r}
+#--- Create survival object
+surv_wh <- whitehall %$% Surv(time = py, event = chd)
+
+#--- Calculate rates
+pyears(surv_wh ~ grade, data = whitehall) %>% 
+  summary(rate = T, ci.r = T, scale = 1000)
+
+#--- Follow-up time in years
+summary(whitehall$py / 365.25)
+```
+
+Calculate the cardiac mortality rate ratio in these two job groups:
+
+```{r}
+rateratio(64, 90, 7266, 20340, conf.level = 0.95) 
+```
+
+-------------------------------------------------------------------------------
+
+## 3. Age as timescale
+
+In order to change the timescale to current age, we need to change the exit variable to age attained instead of age of exit.
+
+```{r}
+# Create person-years using age attained
+whitehall %<>%
+  mutate(age.attained = time_length(interval(as.Date(timebth), as.Date(timeout)), "years"),
+py2 = age.attained-agein)
+
+# Create survival object using age as time scale
+surv_wh_age <- whitehall %$% Surv(time = age.attained, event = chd)
+
+#--- Age at exit & entry
+summary(whitehall$agein)
+summary(whitehall$age.attained)
+```
+
+-------------------------------------------------------------------------------
+
+
+## 4-7. Lexis expansion
+
+Now let's split the follow-up times into intervals that are specific to different age bands, a Lexis expansion. 
+
+We will want to change our dataset structure: we need each row of the dataset to represent a time interval open on the left and closed on the right, with covariate values for each row that apply over that interval. The event variable is 1 if an event happens over that interval, or 0 if it does not.
+
+To check what R is doing, we'll check record 5001 before and after splitting. We see that this individual spend 19.4 years under follow up and entered the cohort at age 47.5 years.
+
+```{r}
+whitehall %>% filter(id == "5001") %>% 
+  select(chd, timein, timeout, timebth, agein, age.attained, py2)
+```
+
+Use the `survSplit()` function to create 5-year groups of current age between age 50 and 80, and 10-year groups for the youngest and oldest groups. This is equivalent to `stsplit` in Stata.
+
+In the Stata data structure, age bands before the age of entry into the study are automatically dropped, but this is not the case in R, and hence we filter. R also backfills the event indicator into every timeband, which Stata does not do. We must therefore also signal to R to only put the event indicator in the relevant timeband. 
+
+```{r}
+#--- Split
+wh_split <- survSplit(surv_wh_age ~ .,
+                         data = whitehall,
+                         cut = c(40, 50, 55, 60, 65, 70, 75, 80, 90),
+                         episode = "ageband",
+                      event = "chd")
+
+#--- Filter to include only agebands after age at time of entry
+wh_split <- wh_split %>% 
+  filter(!(ageband == 1)) %>% 
+  filter(!(agein >= 50 & ageband == 2)) %>% 
+  filter(!(agein >= 55 & ageband == 3)) %>% 
+  filter(!(agein >= 60 & ageband == 4)) %>% 
+  filter(!(agein >= 65 & ageband == 5)) %>% 
+  filter(!(agein >= 70 & ageband == 6))
+  
+#--- Remove backfill of event variable
+wh_split <- wh_split %>%
+    group_by(id) %>%
+    mutate(dummymax = as.integer(ageband == max(ageband))) %>% 
+  mutate(chd2 = ifelse(dummymax == 1 & chd == 1, 1, 0))
+
+
+
+```
+
+What happened to person record 5001?
+It has been expanded into five records, and two new columns have been added, indicating the ageband.
+
+```{r}
+wh_split %>% filter(id == "5001") %>% 
+  select(chd2, timein, timeout, timebth, agein, age.attained, py2, surv_wh_age, ageband)
+```
+
+The Lexis expansion won't change the original dataset, therefore the information on events and rates isn't corrupted - we have to signal to R though that it should not treat each row as a unit of persontime, but each id (this problem would be avoided if we used principles of tidy data!), so we generate a new variable that distributes the persontime over the number of rows in the data frame for each individual.
+
+```{r}
+#--- New personyears var
+wh_split <- wh_split %>% group_by(id) %>% mutate(py3 = py/n())
+
+#--- Create survival object
+surv_lx <- wh_split %$% Surv(time = py3, event = chd2)
+
+#--- Stratify by grade
+pyears(surv_lx ~ grade,
+       data = wh_split) %>%
+  summary(rate = T, ci.r = T, scale = 1000)
+```
+
+We see that we obtain the same results as in Question 2.
+
+-------------------------------------------------------------------------------
+
+
+## 8. Stratifying by age band
+
+Now we can use this newly created variable to stratify the rates by age band. Note that these results don't exactly mirror the Stata output - some of the time calculations are different as people have been put into slightly different groups in some of the lower bands with the cut function (since we used rounded data - you could try to go back and fix this if you were so inclined!)
+
+What is the effect of age on cardiac-related mortality?
+
+```{r}
+# Stratify by ageband
+pyears(surv_wh_age ~ ageband,
+       data = wh_split,
+       scale = 1000) %>%
+  summary(n = F, rate = T, ci.r = T)
+
+```
+
+-------------------------------------------------------------------------------
+
+
+## 9. Further stratification
+
+Here we load some custom functions (from myominnoo/mStats_beta on github) to approximately mimic the behaviour of the Stata commands stmh and strate. We get very similar results to the Stata output, again because of small differences in the exact banding of our dataset. 
+
+```{r}
+source("./stmh.R")
+source("./strate.R")
+source("./printText.R")
+
+# Calculate RRs for effect of grade within each age-band
+stmh(wh_split, time = py3, status = chd2, by = grade, strata = ageband, per = 1000, plot = F)
+
+# In absence of custom function, could also have noted OR approximately equal to RR and calculate with mhodds equivalent with the cohort design option.
+wh_split %$% mhor(chd2, grade, ageband, design = "cohort", graph = F)
+```
+
+-------------------------------------------------------------------------------
+
+
+# Optional exercises
+
+## 10. Smoking
+
+Examine the effect of smoking on cardiac-related mortality.
+
+```{r}
+# Rates stratified by smoking
+pyears(surv_wh_age ~ smok3, data = whitehall, scale = 1) %>%
+  summary(n = F, rate = T, ci.r = T, scale = 1000)
+
+# Smoking and grade
+stmh(wh_split, time = py3, status = chd2, by = grade, strata = smok3, per = 1000, plot = F)
+```
+
+The mortality rate is higher in smokers than in never-smokers.
+
+-------------------------------------------------------------------------------
+
+
+## 11. Statifying on three variables
+
+Examine the effect of job grade on cardiac mortality, adjusting for both age and smoking at the same time. What can you conclude?
+
+While we could extend the custom stmh function to do this, or use mhor(), you should be questioning what this question is asking you to do! Doing such a heavily stratified analysis is likely to end up with a number of sparse cells that are uninterpretable (R sometimes hints these things to you: there isn't a function for this analysis because you probably shouldn't do it) -- you're best to consider this question a motivating example as to why regression methods are needed. The same logic applies to question 12 - save these analyses for the regression methods practical!
+
+If you do take the time to work out how to adapt existing code to calculate an SMR using classical methods (!), please do submit a PR to the repository!
+
+-------------------------------------------------------------------------------
+
