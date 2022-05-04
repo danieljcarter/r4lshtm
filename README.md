@@ -29,7 +29,12 @@ The mapping of sessions is as follows:
 |             | prac02_pca                 |   Session 20         |  Principal component analysis   	|
 |--------	    |----------	                 |-----------	          |-------	|
 | ASME        | prac01_classical           |   Session 1          |  Self-directed exercises     	|
+|             | prac02_logistic            |   Session 2          |  Review of logistic regression     	|
 |             | prac03_matched             |   Session 3          |  Matched case-control studies     	|
+|             | prac04_time                |   Session 5          |  Stratifying on time?     	|
+|             | prac05_poisson             |   Session 6          |  Poisson regression    	|
+|             | prac06_cox.                |   Session 7          |  Cox regression    	|
+
 
 The datasets required to work through these are presently available on the SME & ASME course pages: 
 
@@ -40,6 +45,7 @@ The datasets required to work through these are presently available on the SME &
 - mwanza17.dta
 - trinmlsh.dta
 - whitehall17.dta
+- pbc1bas.dta
 
 
 
