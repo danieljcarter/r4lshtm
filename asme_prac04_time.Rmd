@@ -157,7 +157,7 @@ Now let's split the follow-up times into intervals that are specific to differen
 
 We will want to change our dataset structure: we need each row of the dataset to represent a time interval open on the left and closed on the right, with covariate values for each row that apply over that interval. The event variable is 1 if an event happens over that interval, or 0 if it does not.
 
-To check what R is doing, we'll check record 5001 before and after splitting. We see that this individual spend 19.4 years under follow up and entered the cohort at age 47.5 years.
+To check what R is doing, we'll check record 5001 before and after splitting. We see that this individual spends 19.4 years under follow up and entered the cohort at age 47.5 years.
 
 ```{r}
 whitehall %>% filter(id == "5001") %>% 

@@ -1,0 +1,337 @@
+---
+title: "8: Cox regression in cohort studies"
+subtitle: "R 4 ASME"
+authors: Authors – Lakmal Mudalige, Andrea Mazzella, Daniel J Carter
+output: html_notebook
+---
+
+-------------------------------------------------------------------------------
+
+## Contents
+
+* Cox regression models
+  * simple
+  * adjusting for follow-up and age
+  * adjusting for other covariates
+* Comparing Poisson and Cox
+ 
+NB: the time-to-event (Kaplan-Meier) approach is not used here, but it was explored with the same dataset in SME.
+ 
+-------------------------------------------------------------------------------
+
+## 0. Packages and options
+
+```{r message=FALSE, warning=FALSE}
+# Load packages
+library(haven)
+library(magrittr)
+library(survival)
+library(fmsb)
+library(jstable) # new package! May have to install
+library(epiDisplay)
+library(lubridate)
+library(tidyverse)
+
+# Limit significant digits to 3, reduce scientific notation
+options(digits = 3, scipen = 9)
+```
+
+-------------------------------------------------------------------------------
+
+
+# Trinidad
+
+## 1. Data manipulation
+
+Read in dataset trinmlsh.dta. This contains data from a cohort study on cardiovascular risk factors and mortality among ~300 men from Trinidad - see the dataset descriptions for more information.
+
+```{r}
+# Import the dataset
+trin <- read_dta("trinmlsh.dta")
+
+# Preview
+trin
+```
+
+Categorical variables need to be factorised and labelled, and later in the practical, we will need to regroup some smoking levels, so this is included in data management.
+
+```{r data management, include=FALSE}
+trin %<>%
+  mutate(
+    ethgp = factor(ethgp,
+                      levels = c(1:5),
+                      labels = c("African", "Indian", "European", "mixed", "Chin")),
+    alc = factor(alc,
+                      levels = c(0:3),
+                      labels = c("none", "1-4/wk", "5-14/wk", ">=15/wk")),
+    smokenum = factor(smokenum,
+                      levels = c(0:5),
+                      labels = c("non-smok", "ex-smok", "1-9/d", "10-19/d", "20-29/d", ">=30/d")),
+    chdstart = factor(chdstart,
+                      levels = c(0, 1),
+                      labels = c("no", "yes")))
+
+# Regroup smoking
+trin %$% table(smokenum, useNA = "ifany")
+trin$smok3 <- as.factor(ifelse(trin$smokenum == "non-smok" , "non-smok",
+                        ifelse(trin$smokenum == "ex-smok", "ex-smok","smoker"))) %>%
+              fct_relevel("non-smok", "ex-smok", "smoker")
+trin %$% table(smokenum, smok3, useNA = "ifany")
+
+```
+
+Now create a survival object to assess all-cause mortality, coded as `death`. Note that Surv() can take time data in two different formats: either a combination of data of entry and data of exit (like in the previous praticas), or as a time difference. In this case, `years` codes this time difference, so we'll use it.
+
+```{r}
+# Survival object
+trin_surv <- trin %$% Surv(time = years, event = death)
+```
+
+-------------------------------------------------------------------------------
+
+
+## 2. Cox regression
+
+We can now examine the smoking-specific mortality rates (per 1,000 person-years). Let's first use the classical technique and then let's use Cox regression.
+
+```{r}
+# Calculate rates & rate ratios
+pyears(trin_surv ~ smok3, data = trin, scale = 1) %>%
+  summary(n = F, rate = T, ci.r = T, scale = 1000)
+
+rateratio(18, 30, 462, 984, conf.level=0.95)
+rateratio(40, 30, 789, 984, conf.level=0.95)
+
+```
+
+The package "survival" contains `coxph()`, the function for Cox regression. Exactly like `pyears()`, `coxph()` takes as first argument a formula with the survival object on the left and the exposure on the right.
+
+```{r}
+# Create Cox model
+coxph(trin_surv ~ smok3, data = trin)
+coxph(trin_surv ~ smok3, data = trin) %>% jstable::cox2.display()
+```
+
+The mortality rate ratio appears to increase for each level of smoking; there is some weak evidence against the null hypothesis of equal hazard ratios (LRT p = 0.07).
+
+-------------------------------------------------------------------------------
+
+
+## 3. Cox with a numerical exposure
+
+So, let's analyse the same association but with smoking coded as quantitative.
+
+```{r}
+# Cox with numeric exposure
+coxph(trin_surv ~ as.numeric(smok3), data = trin)
+coxph(trin_surv ~ as.numeric(smok3), data = trin) %>% jstable::cox2.display()
+```
+Now there is some evidence against the null hypothesis of no linear trend: from one level of smoking to the next, the hazard increases by about 1.3 times.
+
+-------------------------------------------------------------------------------
+
+
+## 4. Timescale set as current age
+
+Cox regression always automatically adjusts for a time variable: the way we made our survival object earlier, the timescale was set as time since entry. But what if adjusting for current age gave us different results?
+
+This could happen if there are differences in age between the smoking levels. Let's check this.
+
+```{r}
+#--- Quantify
+trin %>% group_by(smok3) %>%
+         drop_na() %>% 
+         summarise("N" = n(),
+                   "1st quartile" = quantile(ageent, 0.25),
+                   "median" = median(ageent),
+                   "3rd quartile" = quantile(ageent, 0.75))
+
+
+#-- Visualise
+trin %>% drop_na() %>% 
+  ggplot(aes(x = smok3, y = ageent)) + 
+  geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) + 
+  geom_jitter(aes(x = reorder(smok3, desc(ageent)), y = ageent, colour = as.factor(death)), width=0.15) +
+  labs(title = "Age at entry by smoking status",
+       y = "Age at entry (years)", 
+       x = "", 
+       colour = "CHD death") + 
+  theme_bw() + 
+  scale_colour_brewer(type = "qual", palette = 2)
+```
+
+The age of entry seems similar in all three levels, so the results shouldn't be very different with a different timescale, but just for completeness, we check anyway.
+
+To set the timescale as current age, we need to put the date of birth in the "origin" argument and convert dates to numbers of years (since 01/01/1970, the base date in R). 
+
+```{r}
+# Survival object set for current age
+trin_surv_age <- trin %$% Surv(as.numeric(timein) / 365.25, 
+                               as.numeric(timeout) / 365.25,
+                               death,
+                               origin = as.numeric(timebth) / 365.25)
+
+# Cox using the timeage as the time 
+coxph(trin_surv_age ~ smok3, data = trin)
+coxph(trin_surv_age ~ smok3, data = trin) %>% jstable::cox2.display()
+```
+
+-------------------------------------------------------------------------------
+
+
+# Primary Biliary Cholangitis (PBC)
+
+This dataset contains information from an RCT comparing the immunosuppressant azathioprine with placebo.
+
+* Outcome: `death`
+* Treatment: `treat`
+* Time:
+ * `time` (follow-up in years)
+ * `age` in years
+* Other variables:
+ * `logb0` (log serum bilirubin concentration)
+ 
+Given these time variables, how would you set up your survival object?
+
+```{r include=FALSE}
+# Read in the pbc1bas.dta dataset 
+pbc <- read_dta("pbc1bas.dta")
+
+glimpse(pbc)
+
+# Data management
+pbc %<>% mutate(death = d,
+               treat = factor(treat, levels = c(1, 2), labels = c("placebo", "azath")),
+               cenc0 = factor(cenc0, levels = c(0, 1), labels = c("no", "yes")),
+               cir0 = factor(cir0, levels = c(0, 1), labels = c("no", "yes")),
+               gh0 = factor(gh0, levels = c(0, 1), labels = c("no", "yes")),
+               asc0 = factor(asc0, levels = c(0, 1), labels = c("no", "yes"))) %>% 
+         select(-d)
+
+glimpse(pbc)
+
+summary(pbc)
+```
+
+-------------------------------------------------------------------------------
+
+
+## 5. Comparing Poisson and Cox
+
+Assess the relationship between treatment and mortality adjusting for baseline bilirubin, first with Poisson, and then with Cox regression.
+
+```{r}
+# Poisson model
+glm(death ~ offset(log(time)) + treat + logb0, family = poisson(), data = pbc) %>% idr.display()
+
+# Cox model
+cox_pbc <- survival::coxph(Surv(time, death) ~ treat + logb0, data = pbc, model = TRUE)
+jstable::cox2.display(cox_pbc)
+
+```
+
+Poisson: HR 0.73 (0.49, 1.10), LRT p = 0.13
+Cox:     HR 0.65 (0.43, 0.99), LRT p = 0.04
+
+Unlike Poisson, Cox regression also adjusts for time in study, and its results provide good evidence for an effect of azathioprine. A great exercise for the mathematically inclined of you reading this is to demonstrate that a Cox proportional hazards model is exactly equivalent to a Poisson model under the assumption of constant baseline hazard.
+
+-------------------------------------------------------------------------------
+
+
+## 6. Cox'ing the Poisson
+
+In order to make the Poisson model more similar to Cox, we need to account for time in study. We do this by performing a Lexis expansion - this time, instead of doing the Lexis expansion by hand as in the previous practical, we will use the functions from the 'Epi' package, and then add the newly-created "period" categorical variable as another covariate.
+
+```{r splitLexis}
+library(Epi)
+
+# Create a Lexis object
+pbc$time.in <- 0
+Lexis.pbc <-
+  pbc %>% Lexis(
+    entry = list(per = time.in),
+    exit = list(per = time),
+    exit.status = death,
+    data = .
+  )
+
+# Lexis split by period
+Lexis.pbc.per <-
+  splitLexis(Lexis.pbc, breaks = c(0, 2, 4, 6), time.scale = "per")
+
+# Create a variable with the period
+Lexis.pbc.per$per <- timeBand(Lexis.pbc.per, "per", type = "factor")
+
+# Fit a Poisson model to the split Lexis object
+PBC.m2 <-
+  glm(
+    lex.Xst ~ offset(log(lex.dur)) + per + as.factor(treat) + logb0,
+    family = poisson(),
+    data = Lexis.pbc.per
+  )
+
+exp(PBC.m2$coefficients)
+confint(PBC.m2) %>% exp()
+```
+
+-------------------------------------------------------------------------------
+
+
+# No such thing as too much Whitehall
+
+Read in whitehal.dta.
+
+```{r include=FALSE}
+whitehall <- read_stata("whitehal.dta")
+
+# Factorise job grade
+whitehall$grade <- factor(whitehall$grade,
+                          levels = c(1, 2),
+                          labels = c("higher", "lower"))
+
+whitehall %<>% mutate(py = time_length(interval(as.Date(timein), as.Date(timeout)), "days"))
+
+glimpse(whitehall)
+```
+
+Build a Cox model to estimate the effect of job grade (`grade`) on cardiac mortality (`chd`), first with the follow-up scale. Afterwards, assess whether age is a confounder with both Cox and Poisson techniques. The time variables are `timein`, `timeout` and `timebth`.
+
+```{r}
+# Survival object in follow-up scale
+surv_wh <- whitehall %$% Surv(time = as.numeric(timein) / 365.25, 
+                                 time2 = as.numeric(timeout) / 365.25, 
+                                 event = chd)
+
+# Cox
+coxph(surv_wh ~ grade, data = whitehall) %>% cox2.display()
+```
+
+Now, let's assess if age is a confounder by changing the timescale.
+
+```{r}
+# Age as timescale
+coxph(Surv(timein, timeout, chd, origin = timebth) ~ grade, data= whitehall) %>% cox2.display()
+```
+
+This HR is much lower than the previous one, indicating that age is likely a confounder for the effect of grade. Note that this also makes sense from a causal perspective: age is almost certainly a common cause of both mortality and civil service grade.
+
+The same analysis with Poisson requires us to split the data into smaller chunks of time and estimate within those chunks.
+
+```{r}
+# Poisson with no Lexis expansion
+glm(chd ~ offset(log(follow.up)) + grade, family = poisson(), data = whitehall) %>% idr.display()
+
+# Do the Lexis expansion
+wh.lexis <- whitehall %>% 
+  Lexis(entry = list(per=timein), exit = list(per=timeout, age = timeout - timebth), exit.status = chd, data = .) %>% 
+  splitLexis(breaks = c(0, 40, seq(50,80,5)), time.scale="age") 
+
+wh.lexis$currage <- timeBand(wh.lexis, "age", type = "factor")
+
+# Poisson regression with Lexis expansion
+glm(lex.Xst ~ offset(log(lex.dur)) + currage + grade, family = poisson(), data = wh.lexis) %>% idr.display()
+```
+
+Now we see very similar results -- accounting for age in this way makes Poisson regression closely resemble a Cox regression.
+
+-------------------------------------------------------------------------------
